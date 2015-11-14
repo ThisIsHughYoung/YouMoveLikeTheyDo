@@ -223,7 +223,7 @@ Mario.prototype.doGround = function(game) {
 				this.speed += accelrate * this.dir;
 			}
 		}
-		if (this.tempMDir & 2) {
+		if (tempMDir & 2) {
 			this.speed = Math.max(this.speed, -this.maxSpeed);
 		} else {
 			this.speed = Math.min(this.speed, this.maxSpeed);
