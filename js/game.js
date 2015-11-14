@@ -119,7 +119,6 @@ var Game = function(title, w, h, inputs) {
 	// Abstract functions
 	this.begin = function(game) {}
 	this.tick = function(game) {}
-
 }
 
 Game.prototype.loadManifest = function(m) {

@@ -24,3 +24,18 @@ canvas {
   image-rendering: -webkit-optimize-contrast;
   -ms-interpolation-mode: nearest-neighbor;
 }
+
+#side {
+	width:300px;
+	float:right;
+	height:100vh;
+	background-color:#012;
+	padding-right:30px;
+}
+
+.entry {
+	font-family: monospace;
+	font-size:13px;
+	text-align: right;
+	color:#fff;
+}
