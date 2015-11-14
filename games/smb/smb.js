@@ -89,7 +89,11 @@ function Mario(game) {
 		frames: {width:16,height:16,count:13,regX:0,regY:15},
 		animations: smallMarioAnim
 	})
+	
+	this.container = new createjs.Container();
 	this.sprite = new createjs.Sprite(this.spritesheet, "stand");
+	
+	this.container.addChild(this.sprite);
 }
 
 Mario.prototype.getPixelCoords = function() {
@@ -104,13 +108,27 @@ Mario.prototype.isOnTile = function() {
 	return (game.world.getBlockAtTile(this.getCurTile()).id == 1)
 }
 
+// This function is where all of the TAS magic has been
+// implemented. The goal is to create a logical set of rules that,
+// given the right inputs, will give us the same glitches that
+// TAS-ers are known for, without introducing any of our own!
 Mario.prototype.doCollision = function(game) {
 	var onTile = this.isOnTile()
 	//console.log("ground: " + this.ground + ", onTile: " + onTile)
 	if (this.ground && !onTile) {
 		this.ground = false;
 		this.state = 3;
-	} else if (!this.ground && onTile) {
+	} else if (!this.ground && Math.sign(this.ySpeed) == 1 && onTile) {
+		// Ground test:
+		// Only performed when Mario's velocity is downwards
+		// Returns true when Mario's bottom edge of hitbox is 1-4 pixels
+		// inside the top edge of a tile (if Mario is falling fast, he won't
+		// go through the floor.)
+		// 
+		// Given these conditions, it is possible to "wall-jump" by falling
+		// at running speed into a tile, triggering the ground test, and
+		// jumping before the game has a chance to push Mario outside of the
+		// wall.
 		console.log("trigger")
 		this.ground = true;
 		this.state = 0;
@@ -120,17 +138,17 @@ Mario.prototype.doCollision = function(game) {
 	}
 }
 
-
+// MARIO'S GROUND PHYSICS
+// Logic for Mario's "ground state", handling the following:
+// - Standing
+// - Walking
+// - Skidding
+// - Turning around
+// FEATURES: This is as close to NES-perfect as I can manage.
+// Pressing Left+Right at the same time causes some quirks that
+// lead to Mario "moonwalking" (SHAMONE!). Speedrunners and TAS'ers
+// use these glitches to their advantage.
 Mario.prototype.doGround = function(game) {
-	/*if (this.ground) {
-		if (game.input.isKeyDown['a'] && this.isJumpAllowed) {
-			this.state = 3;
-			this.sprite.gotoAndPlay('jump');
-			this.ySpeed = -0x4000;
-			this.doAir(game);
-		} 
-	}*/
-	
 	var skidrate = marioDefaults.skidDecel;
 	var accelrate = 0;
 	var speedchange = 0;
@@ -151,7 +169,8 @@ Mario.prototype.doGround = function(game) {
 		}
 	}
 	
-	// set speed variables (using isRun logic)
+	// Set acceleration rates and maximum speeds
+	// according to whether we're running or walking
 	if (this.isRun) {
 		this.maxSpeed = marioDefaults.runMaxSpeed;
 		accelrate = marioDefaults.runAccel;
@@ -162,6 +181,9 @@ Mario.prototype.doGround = function(game) {
 	
 	// The following variables exist to simulate
 	// SMB moonwalking! (hee hee!)
+	// (see declaration of Mario.idir for an explanation)
+	// Left =  00000010
+	// Right = 00000001
 	var tempMDir = 0;
 	if (this.speed > 0) {
 		tempMDir = 1;
@@ -170,48 +192,66 @@ Mario.prototype.doGround = function(game) {
 	}
 	
 	// Always set direction towards button press
+	//
+	// If button pressed, set inputdir to binary value:
+	// Left:  00000010
+	// Right: 00000001
+	// But, when user inputs Left AND right, both bits are set!
+	// L+R:   00000011
+	// (in this state, Mario faces left, but moves right due to
+	// a confusion in the game's code, which I have attempted to
+	// recreate here.)
+	// 
+	// For more, see NES RAM Address 0x0003. Note that most emulators disable
+	// Left + Right, Up + Down by default to simulate an actual d-pad.
+	// You can re-enable this in FCEUX, but not in OpenEmu (Mac).
 	if (isInput) {
 		this.idir = 0;
 		if (isLeft) {
 			this.dir = -1;
 			this.idir = this.idir | 2;
 		}
+		// If both L+R are pressed, Right takes precedence.
 		if (isRight) {
 			this.dir = 1;
 			this.idir = this.idir | 1;
 		}
 	}
 	
-	
-	
-	
 	if (this.speed != 0) {
 		// Walking and Skidding logic 
-		
 		
 		// If the direction of our movement
 		// differs from the direction we're facing,
 		// Mario should be skidding
-		/*if (isInput && tempMDir != this.idir) {
-			this.skid = true;
-		}*/
-		
-		
+		// (This logic block will be triggered if both
+		// Left+Right are pressed, hee heee heeeeee!)
 		if (this.idir != tempMDir) {
-			this.maxSpeed = marioDefaults.walkMaxSpeed;
+			// Skidding Logic
 			this.skid = true;
-			// If we're moving too slow, don't decelerate!
-			// (Matches NES behaviour)
+			
+			// Set maxSpeed to walking
+			// (Speedrunners use L+R to INSTANTLY slow Mario down
+			// to walking, instead of having to wait for the
+			// "10 frames rule")
+			this.maxSpeed = marioDefaults.walkMaxSpeed;
+			
 			if (Math.abs(this.speed) > marioDefaults.skidTurnSpeed) {
 				this.skid = true;
-				this.speed += skidrate * this.dir;
+				speedchange = skidrate;
 			} else {
+				// If Mario's skidding speed is below a threshold,
+				// Mario gets a foothold and begins walking normally
+				// (Matches NES behaviour)
 				this.speed = 0;
+				speedchange = 0;
 				this.skid = false;
 			}
 		} else {
-			//this.skid = false;
+			// Walking Logic
+			this.skid = false;
 			if (!isInput) {
+				// If there's no input, slow mario down to a halt
 				if (Math.abs(this.speed) > marioDefaults.releaseDecel) {
 					this.speed += marioDefaults.releaseDecel * -(Math.sign(this.speed))
 				} else {
@@ -219,20 +259,29 @@ Mario.prototype.doGround = function(game) {
 					speedchange = 0;
 				}
 			} else {
-				//speedchange = accelrate * this.dir;
-				this.speed += accelrate * this.dir;
+				speedchange = accelrate;
 			}
 		}
-		if (tempMDir & 2) {
-			this.speed = Math.max(this.speed, -this.maxSpeed);
-		} else {
-			this.speed = Math.min(this.speed, this.maxSpeed);
-		}
 		
+		this.speed += speedchange * this.dir;
+		
+		// If we're pressing a button that matches our movement direction,
+		// clamp Mario's movement speed down to his maximum
+		// (Note that this isn't a proper skid check, as well as the
+		// botched up logic in the following lines - this is why
+		// Mario's moonwalk behaves the way that it does!)
+		if (this.idir & tempMDir) {
+			if (Math.sign(this.speed) == -1) {
+				this.speed = Math.max(this.speed, -this.maxSpeed);
+			} else {
+				this.speed = Math.min(this.speed, this.maxSpeed);
+			}
+		}
 	}
 	
 	if (this.speed == 0) {
-   		//Standing Logic
+   		// Standing Logic
+		// (also triggered immediately after skidding to a halt)
    		if (isLeft) {
    			this.speed = -0x130;
    			this.dir = -1;
@@ -249,7 +298,10 @@ Mario.prototype.doGround = function(game) {
 		if (this.sprite.currentAnimation != 'stand') {
 			this.sprite.gotoAndPlay('stand');
 		}
-	} else if (this.idir & tempMDir || Math.abs(this.speed) < 0x200) {
+	} else if (this.idir & tempMDir || Math.abs(this.speed) < marioDefaults.skidTurnSpeed) {
+		// If a button we're pressing matches our direction,
+		// play the "walk" animation. (Don't skid if our speed is within
+		// the skid threshold)
 		this.doWalkCycle();
 	} else {
 		if (this.sprite.currentAnimation != 'skid') {
@@ -259,12 +311,14 @@ Mario.prototype.doGround = function(game) {
 }
 
 Mario.prototype.doLogic = function(game) {
-	
-	//this.doCollision(game);
 	if (this.ground) {
-		//this.doGround(game);
-	} else {
-		//doAir?!?
+		if (game.input.isKeyDown['a'] && this.isJumpAllowed) {
+			this.state = 3;
+			this.sprite.gotoAndPlay('jump');
+			this.ySpeed = -0x4000;
+			this.ground = false;
+			this.doAir(game);
+		} 
 	}
 	
 	switch (this.state) {
@@ -273,10 +327,22 @@ Mario.prototype.doLogic = function(game) {
 		break;
 		//TODO: fix the switch/case!
 	case 3:
-		//this.doAir(game);
+		this.doAir(game);
 	default:
 		break;
 	}
+	
+	
+	
+
+	
+	this.doCollision(game);
+	if (this.ground) {
+		//this.doGround(game);
+	} else {
+		//doAir?!?
+	}
+	
 	
 	this.x += (this.speed - (this.speed & 0xFF)) / 0x100;
 	this.y += (this.ySpeed - (this.ySpeed & 0xFF)) / 0x100;
@@ -383,8 +449,12 @@ var MarioWorld = function(game) {
 	
 	this.container = new createjs.Container();
 	
+	this.width = 0;
+	this.height = 14;
+	
 	for (var chunk in worldoneone) {
 		this.level.push([]);
+		this.width += 2;
 		for (var column in worldoneone[chunk]) {
 			this.level[chunk].push([]);
 			for (var block in worldoneone[chunk][column]) {
@@ -418,6 +488,19 @@ var MarioWorld = function(game) {
 
 // Returns a Block Object
 MarioWorld.prototype.getBlockAtTile = function(coords) {
+	var isValidInput = true;
+	
+	if (coords[0] < 0 || coords[0] >= this.width) {
+		isValidInput = false;
+	}
+	if (coords[1] < 0 || coords[1] >= this.height) {
+		isValidInput = false;
+	}
+	
+	if (!isValidInput) {
+		return {id: 0, bitmap:null}
+	}
+	
 	return this.level[Math.floor(coords[0]/2)][coords[0]%2][coords[1]];
 }
 
@@ -457,10 +540,14 @@ function begin(game) {
 
 function getInspectors(game) {
 	var rval = [
+		{id: "xpos", val:game.mario.x, base:16},
+		{id: "ypos", val:game.mario.y, base:16},
 		{id: "absspeed", val:((Math.abs(game.mario.speed)&0xFFF00)/0x100), base:16},
+		{id: "maxSpeed", val:((Math.abs(game.mario.maxSpeed)&0xFFF00)/0x100), base:16},
 		{id: "dir", val:game.mario.dir},
 		{id: "skid", val:game.mario.skid},
-		{id: "maxSpeed", val:((Math.abs(game.mario.maxSpeed)&0xFFF00)/0x100), base:16}
+		{id: "", val:" "},
+		{id: "ground", val:game.mario.ground}
 	]
 	return rval;
 }
