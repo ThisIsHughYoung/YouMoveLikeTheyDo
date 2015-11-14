@@ -18,7 +18,7 @@ var defaultKeybinds = {
 	'pause' : 80
 }
 
-function DerpGame() {
+function MarioGame() {
 	Game.call(this, "Super Mario Bros.", 256, 240, defaultKeybinds);
 	this.begin = begin;
 	this.tick = tick;
@@ -27,8 +27,8 @@ function DerpGame() {
 	this.world = null;
 }
 
-DerpGame.prototype = Object.create(Game.prototype);
-DerpGame.prototype.constructor = DerpGame
+MarioGame.prototype = Object.create(Game.prototype);
+MarioGame.prototype.constructor = MarioGame
 
 var smallMarioAnim = {
 	stand: 0,
@@ -105,17 +105,31 @@ function Mario(game) {
 	
 	// int: Player position (1 pixel = 0x10)
 	this.x = 0;
-	this.y = 0xBC0;
+	this.y = 0xAC0;
+	
+	// uint: Mario's height in pixels (either 16 or 32)
+	this.height = 16;
 	
 	// uint: number of frames since we released the B button
 	this.framesSinceBReleased = 0;
 	
+	this.collision = {
+		groundTest: false,
+		wallTest: false,
+		x: 0,
+		y: 0,
+		w: 10,
+		h: 12
+	};
+	
 	// CreateJS Spritesheet object
 	this.spritesheet = new createjs.SpriteSheet({
 		images: [this.game.assets.getResult("mario")],
-		frames: {width:16,height:16,count:13,regX:0,regY:15},
+		frames: {width:16,height:16,count:13,regX:0,regY:0},
 		animations: smallMarioAnim
 	})
+	
+	this.hitbox = new createjs.Shape();
 	
 	// Container for all graphical objects
 	this.container = new createjs.Container();
@@ -126,7 +140,12 @@ function Mario(game) {
 	// ----------------
 	// END DECLARATIONS
 	
+	this.hitbox.graphics.setStrokeStyle(1,0,0,10,true).beginStroke("#0F0").drawRect(3.5, 3.5, 10, 12);
+	this.sprite.y == 0
+	
 	this.container.addChild(this.sprite);
+	this.container.addChild(this.hitbox);
+	
 }
 
 Mario.prototype.getPixelCoords = function() {
@@ -141,33 +160,102 @@ Mario.prototype.isOnTile = function() {
 	return (game.world.getBlockAtTile(this.getCurTile()).id == 1)
 }
 
-// This function is where all of the TAS magic has been
+// The following functions are where all of the TAS magic has been
 // implemented. The goal is to create a logical set of rules that,
 // given the right inputs, will give us the same glitches that
 // TAS-ers are known for, without introducing any of our own!
 Mario.prototype.doCollision = function(game) {
-	var onTile = this.isOnTile()
-	//console.log("ground: " + this.ground + ", onTile: " + onTile)
-	if (this.ground && !onTile) {
-		this.ground = false;
-		this.state = 3;
-	} else if (!this.ground && Math.sign(this.ySpeed) == 1 && onTile) {
-		// Ground test:
-		// Only performed when Mario's velocity is downwards
-		// Returns true when Mario's bottom edge of hitbox is 1-4 pixels
-		// inside the top edge of a tile (if Mario is falling fast, he won't
-		// go through the floor.)
-		// 
-		// Given these conditions, it is possible to "wall-jump" by falling
-		// at running speed into a tile, triggering the ground test, and
-		// jumping before the game has a chance to push Mario outside of the
-		// wall.
-		console.log("trigger")
-		this.ground = true;
-		this.state = 0;
-		this.ySpeed = 0;
-		this.y = (getTileCoords(this.getCurTile())[1] * 0x10);
-		//console.log(getTileCoords(this.getCurTile())[1])
+	this.collision.x = ((this.x - (this.x & 0xF)) / 0x010) + 3;
+	this.collision.y = ((this.y - (this.y & 0xF)) / 0x010) + 3;
+	this.collision.h = this.height - 16 + 12;
+	
+	this.collision.groundTest = false;
+	this.ground = false;
+	//if (this.ground == false) {
+		if (Math.sign(this.ySpeed) >= 0) {
+			var lCoord = [this.collision.x, this.collision.y + this.collision.h];
+			var rCoord = [this.collision.x + this.collision.w, this.collision.y + this.collision.h];
+		
+			var lTile = getTileAtPixel(lCoord);
+			var rTile = getTileAtPixel(rCoord);
+		
+			var lBlock = game.world.getBlockAtTile(lTile);
+			var rBlock = game.world.getBlockAtTile(rTile);
+		
+			if (lBlock.id == 1 || rBlock.id == 1) {
+				if (lCoord[1] % 16 < 5) {
+					this.collision.groundTest = true;
+					this.ground = true;
+				}
+			}
+		}
+	//}
+}
+
+Mario.prototype.doGroundEjection = function(game) {
+	this.y = (this.y & 0xFFF00) + 0x10;
+}
+
+Mario.prototype.doWallEjection = function(game) {
+	
+}
+
+Mario.prototype.doLogic = function(game) {
+	if (this.ground) {
+		if (game.input.isKeyDown['a']) {
+			this.state = 3;
+			this.sprite.gotoAndPlay('jump');
+			this.ySpeed = -0x4000;
+			this.ground = false;
+			this.doAir(game);
+		}
+	}
+	
+	if (this.ground) {
+		this.doGround(game)
+	} else {
+		this.doAir(game);
+	}
+	
+	this.x += (this.speed - (this.speed & 0xFF)) / 0x100;
+	if (!this.ground) {
+		this.y += (this.ySpeed - (this.ySpeed & 0xFF)) / 0x100;
+	}
+	
+	// PHYSICS:
+	// Step 1: Check for collisions, and set flags accordingly
+	this.doCollision(game);
+	if (this.ground) {
+		//this.doGround(game);
+	} else {
+		//doAir?!?
+	}
+	
+	// Step 2: If Mario has taken damage, do stuff
+	// TODO
+	
+	// Step 3: If Mario has collided with any tiles, try
+	// to push his body out.
+	if (this.collision.groundTest) {
+		this.doGroundEjection(game)
+	}
+	if (this.collision.wallTest) {
+		this.doWallEjection(game)
+	}
+	
+	
+	if (this.idir & 2) {
+		this.sprite.scaleX = -1;
+	} else {
+		this.sprite.scaleX = 1;
+	}
+	
+	this.container.x = (this.x - (this.x & 0xF)) / 0x010;
+	this.container.y = ((this.y - (this.y & 0xF)) / 0x010) - (this.height - 16);
+	if (this.sprite.scaleX == -1) {
+		this.sprite.x = 16;
+	} else {
+		this.sprite.x = 0;
 	}
 }
 
@@ -177,10 +265,11 @@ Mario.prototype.doCollision = function(game) {
 // - Walking
 // - Skidding
 // - Turning around
-// FEATURES: This is as close to NES-perfect as I can manage.
+// Note: If this function isn't NES-perfect, it's really damn close.
 // Pressing Left+Right at the same time causes some quirks that
 // lead to Mario "moonwalking" (SHAMONE!). Speedrunners and TAS'ers
-// use these glitches to their advantage.
+// use these glitches to their advantage. This function recreates
+// this behaviour correctly.
 Mario.prototype.doGround = function(game) {
 	var skidrate = marioDefaults.skidDecel;
 	var accelrate = 0;
@@ -189,6 +278,9 @@ Mario.prototype.doGround = function(game) {
 	var isRight = (game.input.kb['right']) ? true:false;
 	var isInput = (isLeft || isRight) ? true : false;
 	var horzMotion = (this.speed != 0) ? true : false;
+	
+	// set yspeed to 0
+	this.ySpeed = 0;
 	
 	// process B logic
 	if (game.input.kb['b']) {
@@ -343,46 +435,6 @@ Mario.prototype.doGround = function(game) {
 	}
 }
 
-Mario.prototype.doLogic = function(game) {
-	if (this.ground) {
-		if (game.input.isKeyDown['a']) {
-			this.state = 3;
-			this.sprite.gotoAndPlay('jump');
-			this.ySpeed = -0x4000;
-			this.ground = false;
-			this.doAir(game);
-		}
-	}
-	
-	if (this.ground) {
-		this.doGround(game)
-	} else {
-		this.doAir(game);
-	}
-	
-	this.doCollision(game);
-	if (this.ground) {
-		//this.doGround(game);
-	} else {
-		//doAir?!?
-	}
-	
-	this.x += (this.speed - (this.speed & 0xFF)) / 0x100;
-	this.y += (this.ySpeed - (this.ySpeed & 0xFF)) / 0x100;
-	
-	if (this.idir & 2) {
-		this.sprite.scaleX = -1;
-	} else {
-		this.sprite.scaleX = 1;
-	}
-	
-	this.sprite.x = (this.x - (this.x & 0xF)) / 0x010;
-	this.sprite.y = (this.y - (this.y & 0xF)) / 0x010;
-	if (this.sprite.scaleX == -1) {
-		this.sprite.x += 16;
-	}
-}
-
 // MARIO'S WALK CYCLE - "DO THE MARIO!"
 //
 // These rules compiled by cross-referencing the following
@@ -425,6 +477,8 @@ Mario.prototype.doAir = function(game) {
 		this.ySpeed += 0x700;
 	}
 	
+	this.ySpeed = Math.min(this.ySpeed, 0x4800);
+	
 	if (this.isOnTile()) {
 		//do projection;
 	}
@@ -450,12 +504,18 @@ function getLevelCoords(chunk, column, block) {
 
 // a chunk is made up of 2 columns of 16x16 blocks
 var defaultChunk = [
-	[0,0,0,0,0,0,0,0,1,0,0,0,1,1],
+//	 0 1 2 3 4 5 6 7 8 9 A B C D
+	[0,0,0,0,0,0,0,0,0,1,0,0,1,1],
 	[0,0,0,0,0,0,0,0,0,0,0,0,1,1]
+]
+var defaultChunk2 = [
+//	 0 1 2 3 4 5 6 7 8 9 A B C D
+	[0,0,0,0,0,0,0,0,0,1,0,0,1,1],
+	[0,0,0,0,0,0,0,0,0,1,0,0,1,1]
 ]
 
 var worldoneone = [
-	defaultChunk,
+	defaultChunk2,
 	defaultChunk,
 	defaultChunk,
 	defaultChunk,
@@ -530,15 +590,13 @@ MarioWorld.prototype.getBlockAtTile = function(coords) {
 var game;
 
 function init() {
-	game = new DerpGame();
+	game = new MarioGame();
 	game.debug = 5;
 	game.loadManifest(manifest, true);
 }
 
 function begin(game) {
 	game.mario = new Mario(game);
-	game.mario.sprite.x = 0;
-	game.mario.sprite.y = 100;
 	block = new createjs.Bitmap(game.assets.getResult("block"));
 	block.x = 0;
 	block.y = 66;
@@ -548,12 +606,11 @@ function begin(game) {
 	line2.graphics.setStrokeStyle(1,0,0,10,true).beginStroke("#ccc").moveTo(0,100.5).lineTo(100,100.5);
 	game.stage.addChild(line);
 	game.stage.addChild(block);
-	game.stage.addChild(game.mario.sprite);
 	
 	game.world = new MarioWorld(this);
 	game.stage.addChild(this.world.container);
+	game.stage.addChild(game.mario.container);
 	
-	//game.stage.addChild(line2);
 	game.stage.update();
 	
 	createInspectors(game)
@@ -569,7 +626,12 @@ function getInspectors(game) {
 		{id: "dir", val:game.mario.dir},
 		{id: "skid", val:game.mario.skid},
 		{id: "", val:" "},
-		{id: "ground", val:game.mario.ground}
+		{id: "ground", val:game.mario.ground},
+		{id: "", val:" "},
+		{id: "yspeed", val:game.mario.ySpeed, base:16},
+		{id: "collision-x", val:game.mario.collision.x, base:16},
+		{id: "collision-y", val:game.mario.collision.y, base:16},
+		{id: "groundTest", val:game.mario.collision.groundTest}
 	]
 	return rval;
 }
@@ -600,9 +662,6 @@ function updateInspectors(game) {
 
 function tick(event) {
 	if (!event.paused || game.input.isKeyDown['tick']) {
-		if (game.input.kb['down']) {
-			game.mario.y += (0x1000);
-		}
 		game.input.tick();
 		game.mario.doLogic(game);
 		game.stage.update();
