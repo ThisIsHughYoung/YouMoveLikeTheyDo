@@ -56,42 +56,75 @@ var marioDefaults = {
 function Mario(game) {
 	this.game = game;
 	
+	// Boolean: true if we're on the ground
 	this.ground = true;
 	
-	this.walking = false;
+	// Hex: Player "Float State"
+	// 0x00: On ground
+	// 0x01: Airborn by jumping
+	// 0x02: Airborn by walking off ledge
+	// 0x03: Sliding down flagpole
+	// See NES RAM Address 0x001D
+	this.floatState = 0;
+	
+	// Set to true if we are "skidding"
 	this.skid = false;
-	this.skiddir = 0;
 	
-	this.isJumpAllowed = true;
-	
+	// Deprecated - do not use
 	this.state = 0;
-	this.substate = 0;
-	this.dir = 1;
-	this.idir = 1;
 	
+	// int: The direction we are facing
+	// 1 : right, -1: left
+	this.dir = 1;
+	
+	// hex: Our "Input Direction", in binary.
+	// Right: 00000001
+	// Left:  00000010
+	// L+R:   00000011
+	this.idir = 0x01;
+	
+	// uint: The current walkcycle sprite being displayed (0-2)
 	this.walkcycleIndex = 0;
+	// uint: The number of frames left before we cycle to the next
+	// sprite in our walkcycle
 	this.walkcycleFrame = 0;
 	
+	// bool: Set to "true" if running
 	this.isRun = false;
 	
+	// signed hex: Player speeds (1 pixel = 0x1000)
+	// Note that in speed calculations, we have one extra byte
+	// of precision for acceleration, but this byte is not used
+	// for calculating position.
 	this.speed = 0;
 	this.ySpeed = 0;
 	
+	// uint: The maximum speed at which a player can walk/run
+	// (1 pixel = 0x1000)
 	this.maxSpeed = 0x18FF;
 	
+	// int: Player position (1 pixel = 0x10)
 	this.x = 0;
 	this.y = 0xBC0;
 	
+	// uint: number of frames since we released the B button
 	this.framesSinceBReleased = 0;
 	
+	// CreateJS Spritesheet object
 	this.spritesheet = new createjs.SpriteSheet({
 		images: [this.game.assets.getResult("mario")],
 		frames: {width:16,height:16,count:13,regX:0,regY:15},
 		animations: smallMarioAnim
 	})
 	
+	// Container for all graphical objects
 	this.container = new createjs.Container();
+	
+	// Mario's main sprite
 	this.sprite = new createjs.Sprite(this.spritesheet, "stand");
+	
+	// ----------------
+	// END DECLARATIONS
 	
 	this.container.addChild(this.sprite);
 }
@@ -312,29 +345,20 @@ Mario.prototype.doGround = function(game) {
 
 Mario.prototype.doLogic = function(game) {
 	if (this.ground) {
-		if (game.input.isKeyDown['a'] && this.isJumpAllowed) {
+		if (game.input.isKeyDown['a']) {
 			this.state = 3;
 			this.sprite.gotoAndPlay('jump');
 			this.ySpeed = -0x4000;
 			this.ground = false;
 			this.doAir(game);
-		} 
+		}
 	}
 	
-	switch (this.state) {
-	case 0: //standing
+	if (this.ground) {
 		this.doGround(game)
-		break;
-		//TODO: fix the switch/case!
-	case 3:
+	} else {
 		this.doAir(game);
-	default:
-		break;
 	}
-	
-	
-	
-
 	
 	this.doCollision(game);
 	if (this.ground) {
@@ -342,7 +366,6 @@ Mario.prototype.doLogic = function(game) {
 	} else {
 		//doAir?!?
 	}
-	
 	
 	this.x += (this.speed - (this.speed & 0xFF)) / 0x100;
 	this.y += (this.ySpeed - (this.ySpeed & 0xFF)) / 0x100;
@@ -358,7 +381,6 @@ Mario.prototype.doLogic = function(game) {
 	if (this.sprite.scaleX == -1) {
 		this.sprite.x += 16;
 	}
-	
 }
 
 // MARIO'S WALK CYCLE - "DO THE MARIO!"
