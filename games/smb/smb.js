@@ -128,6 +128,7 @@ function Mario(game) {
 	this.collision = {
 		groundTest: false,
 		wallTest: false,
+		bumpTest: false,
 		x: 0,
 		y: 0,
 		w: 10,
@@ -204,6 +205,11 @@ Mario.prototype.doCollision = function(game) {
 	if (!this.collision.groundTest && this.ground) {
 		this.jumpInitialSpeed = Math.abs(this.speed);
 		this.ground = false;
+		if (this.jumpInitialSpeed < 0x1900) {
+			this.maxAirSpeed = 0x18FF;
+		} else {
+			this.maxAirSpeed = 0x28FF
+		}
 	}
 	
 	this.collision.wallTest = false;
@@ -219,6 +225,18 @@ Mario.prototype.doCollision = function(game) {
 	if (tlBlock.id == 1 || trBlock.id == 1) {
 		this.collision.wallTest = true;
 	}
+	
+	var bumpCoord = [this.collision.x + Math.floor(this.collision.w/2), this.collision.y - 3]
+	this.collision.bumpTest = false;
+	
+	if (this.ySpeed < 0) {
+		var bumpTile = getTileAtPixel(bumpCoord);
+		var bumpBlock = game.world.getBlockAtTile(bumpTile);
+		if (bumpBlock.id == 1) {
+			this.collision.bumpTest = true;
+		}
+	}
+	
 }
 
 Mario.prototype.doGroundEjection = function(game) {
@@ -228,15 +246,38 @@ Mario.prototype.doGroundEjection = function(game) {
 Mario.prototype.doWallEjection = function(game) {
 	this.speed = 0;
 	
-	// if air: eject opp of momentum
-	if (true) {
+	// if falling: eject opp of momentum
+	if (this.ySpeed > 0) {
 		this.x += 0x10 * -this.momentumDir;
-	}
+	} else {
+		// if ascending or on ground, try to eject towards empty tile
+		var tlCoord = [this.collision.x, this.collision.y];
+		var trCoord = [this.collision.x + this.collision.w, this.collision.y];
+		
+		var tlTile = getTileAtPixel(tlCoord);
+		var trTile = getTileAtPixel(trCoord);
+			
+		var tlBlock = game.world.getBlockAtTile(tlTile);
+		var trBlock = game.world.getBlockAtTile(trTile);
 	
-	// if ground: 
+		if (tlBlock.id != 1 || trBlock.id == 1) {
+			this.x -= 0x10;
+		} else {
+			this.x += 0x10;
+		}
+	}
 }
 
 Mario.prototype.doBorderEjection = function(game) {
+	if (this.collision.bumpTest) {
+		this.y = (this.y & 0xFFFF00) + 0x100;
+		if (game.input.kb['a']) {
+			this.ySpeed = this.gravityA * 2;
+		} else {
+			this.ySpeed = this.gravity * 2;
+		}
+	}
+	
 	if (this.collision.x < 0) {
 		this.x = -0x30;
 		this.speed = 0;
