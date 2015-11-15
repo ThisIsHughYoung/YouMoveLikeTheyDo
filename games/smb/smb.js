@@ -126,13 +126,10 @@ function Mario(game) {
 	this.levelEntryFlag = true;
 	
 	this.collision = {
+		//purely for debugging
 		groundTest: false,
 		wallTest: false,
-		bumpTest: false,
-		x: 0,
-		y: 0,
-		w: 10,
-		h: 12
+		bumpTest: false
 	};
 	
 	// CreateJS Spritesheet object
@@ -143,6 +140,7 @@ function Mario(game) {
 	})
 	
 	this.hitbox = new createjs.Shape();
+	this.showHitbox = false;
 	
 	// Container for all graphical objects
 	this.container = new createjs.Container();
@@ -157,8 +155,6 @@ function Mario(game) {
 	this.sprite.y == 0
 	
 	this.container.addChild(this.sprite);
-	this.container.addChild(this.hitbox);
-	
 }
 
 Mario.prototype.getPixelCoords = function() {
@@ -173,26 +169,48 @@ Mario.prototype.isOnTile = function() {
 	return (game.world.getBlockAtTile(this.getCurTile()).id == 1)
 }
 
+Mario.prototype.getHitbox = function() {
+	return { x:((this.x - (this.x & 0xF)) / 0x10) + 3, 
+		y:((this.y - (this.y & 0xF)) / 0x10) + 3, 
+		w:10, 
+		h:this.height-16 + 12};
+}
+
+Mario.prototype.drawHitbox = function(game) {
+	var hBox = this.getHitbox();
+	game.stage.removeChild(this.hitbox);
+	this.hitbox = new createjs.Shape();
+	this.hitbox.graphics.setStrokeStyle(1,0,0,10,true).beginStroke("#0F0").drawRect(hBox.x + 0.5, hBox.y + 0.5, 10, 12);
+	game.stage.addChild(this.hitbox);
+}
+
 // The following functions are where all of the TAS magic has been
 // implemented. The goal is to create a logical set of rules that,
 // given the right inputs, will give us the same glitches that
 // TAS-ers are known for, without introducing any of our own!
 Mario.prototype.doCollision = function(game) {
-	this.collision.x = ((this.x - (this.x & 0xF)) / 0x010) + 3;
-	this.collision.y = ((this.y - (this.y & 0xF)) / 0x010) + 3;
-	this.collision.h = this.height - 16 + 12;
+
+	this.doBorderEjection(game)
 	
+	this.doGroundEjection(game)
+	
+	this.doBumpEjection(game)
+	this.doWallEjection(game)
+}
+
+Mario.prototype.doGroundEjection = function(game) {
+	var hBox = this.getHitbox();
 	this.collision.groundTest = false;
 	if (Math.sign(this.ySpeed) >= 0) {
-		var blCoord = [this.collision.x, this.collision.y + this.collision.h];
-		var brCoord = [this.collision.x + this.collision.w, this.collision.y + this.collision.h];
-	
+		var blCoord = [hBox.x, hBox.y + hBox.h];
+		var brCoord = [hBox.x + hBox.w, hBox.y + hBox.h];
+		
 		var blTile = getTileAtPixel(blCoord);
 		var brTile = getTileAtPixel(brCoord);
-	
+		
 		var blBlock = game.world.getBlockAtTile(blTile);
 		var brBlock = game.world.getBlockAtTile(brTile);
-	
+		
 		if (blBlock.id == 1 || brBlock.id == 1) {
 			if (blCoord[1] % 16 < 5) {
 				this.collision.groundTest = true;
@@ -211,10 +229,16 @@ Mario.prototype.doCollision = function(game) {
 			this.maxAirSpeed = 0x28FF
 		}
 	}
-	
+	if (this.collision.groundTest) {
+		this.y = (this.y & 0xFFF00) + 0x10;
+	}
+}
+
+Mario.prototype.doWallEjection = function(game) {
+	var hBox = this.getHitbox();
 	this.collision.wallTest = false;
-	var tlCoord = [this.collision.x, this.collision.y];
-	var trCoord = [this.collision.x + this.collision.w, this.collision.y];
+	var tlCoord = [hBox.x, hBox.y];
+	var trCoord = [hBox.x + hBox.w, hBox.y];
 	
 	var tlTile = getTileAtPixel(tlCoord);
 	var trTile = getTileAtPixel(trCoord);
@@ -223,10 +247,38 @@ Mario.prototype.doCollision = function(game) {
 	var trBlock = game.world.getBlockAtTile(trTile);
 	
 	if (tlBlock.id == 1 || trBlock.id == 1) {
-		this.collision.wallTest = true;
+		hBox.wallTest = true;
 	}
 	
-	var bumpCoord = [this.collision.x + Math.floor(this.collision.w/2), this.collision.y - 3]
+	if (hBox.wallTest) {
+		this.speed = 0;
+	
+		// if falling: eject opp of momentum
+		if (this.ySpeed > 0) {
+			this.x += 0x10 * -this.momentumDir;
+		} else {
+			// if ascending or on ground, try to eject towards empty tile
+			var tlCoord = [hBox.x, hBox.y];
+			var trCoord = [hBox.x + hBox.w, hBox.y];
+		
+			var tlTile = getTileAtPixel(tlCoord);
+			var trTile = getTileAtPixel(trCoord);
+			
+			var tlBlock = game.world.getBlockAtTile(tlTile);
+			var trBlock = game.world.getBlockAtTile(trTile);
+	
+			if (tlBlock.id != 1 || trBlock.id == 1) {
+				this.x -= 0x10;
+			} else {
+				this.x += 0x10;
+			}
+		}
+	}
+}
+
+Mario.prototype.doBumpEjection = function(game) {
+	var hBox = this.getHitbox();
+	var bumpCoord = [hBox.x + Math.floor(hBox.w/2), hBox.y]
 	this.collision.bumpTest = false;
 	
 	if (this.ySpeed < 0) {
@@ -237,49 +289,24 @@ Mario.prototype.doCollision = function(game) {
 		}
 	}
 	
-}
-
-Mario.prototype.doGroundEjection = function(game) {
-	this.y = (this.y & 0xFFF00) + 0x10;
-}
-
-Mario.prototype.doWallEjection = function(game) {
-	this.speed = 0;
-	
-	// if falling: eject opp of momentum
-	if (this.ySpeed > 0) {
-		this.x += 0x10 * -this.momentumDir;
-	} else {
-		// if ascending or on ground, try to eject towards empty tile
-		var tlCoord = [this.collision.x, this.collision.y];
-		var trCoord = [this.collision.x + this.collision.w, this.collision.y];
-		
-		var tlTile = getTileAtPixel(tlCoord);
-		var trTile = getTileAtPixel(trCoord);
-			
-		var tlBlock = game.world.getBlockAtTile(tlTile);
-		var trBlock = game.world.getBlockAtTile(trTile);
-	
-		if (tlBlock.id != 1 || trBlock.id == 1) {
-			this.x -= 0x10;
-		} else {
-			this.x += 0x10;
-		}
-	}
-}
-
-Mario.prototype.doBorderEjection = function(game) {
 	if (this.collision.bumpTest) {
-		this.y = (this.y & 0xFFFF00) + 0x100;
+		this.y = (this.y & 0xFFFF00) + 0x100 - 0x20;
 		if (game.input.kb['a']) {
 			this.ySpeed = this.gravityA * 2;
 		} else {
 			this.ySpeed = this.gravity * 2;
 		}
 	}
-	
-	if (this.collision.x < 0) {
+}
+
+Mario.prototype.doBorderEjection = function(game) {
+	var hBox = this.getHitbox();
+	if (hBox.x < 0) {
 		this.x = -0x30;
+		this.speed = 0;
+	}
+	if (hBox.x + hBox.w >= game.w ) {
+		this.x = (game.w * 0x10) - 0xE0;
 		this.speed = 0;
 	}
 }
@@ -321,23 +348,7 @@ Mario.prototype.doLogic = function(game) {
 		this.y += (this.ySpeed - (this.ySpeed & 0xFF)) / 0x100;
 	}
 	
-	// PHYSICS:
-	// Step 1: Check for collisions, and set flags accordingly
 	this.doCollision(game);
-	
-	// Step 2: If Mario has taken damage, do stuff
-	// TODO
-	
-	// Step 3: If Mario has collided with any tiles, try
-	// to push his body out.
-	if (this.collision.groundTest) {
-		this.doGroundEjection(game)
-	}
-	if (this.collision.wallTest) {
-		this.doWallEjection(game)
-	}
-	
-	this.doBorderEjection(game);
 	
 	
 	if (this.idir & 2) {
@@ -673,12 +684,12 @@ var MarioWorld = function(game) {
 	
 	this.container = new createjs.Container();
 	
-	this.width = 0;
-	this.height = 14;
+	this.xtiles = 0;
+	this.ytiles = 14;
 	
 	for (var chunk in worldoneone) {
 		this.level.push([]);
-		this.width += 2;
+		this.xtiles += 2;
 		for (var column in worldoneone[chunk]) {
 			this.level[chunk].push([]);
 			for (var block in worldoneone[chunk][column]) {
@@ -714,10 +725,10 @@ var MarioWorld = function(game) {
 MarioWorld.prototype.getBlockAtTile = function(coords) {
 	var isValidInput = true;
 	
-	if (coords[0] < 0 || coords[0] >= this.width) {
+	if (coords[0] < 0 || coords[0] >= this.xtiles) {
 		isValidInput = false;
 	}
-	if (coords[1] < 0 || coords[1] >= this.height) {
+	if (coords[1] < 0 || coords[1] >= this.ytiles) {
 		isValidInput = false;
 	}
 	
@@ -739,15 +750,6 @@ function init() {
 
 function begin(game) {
 	game.mario = new Mario(game);
-	block = new createjs.Bitmap(game.assets.getResult("block"));
-	block.x = 0;
-	block.y = 66;
-	var line = new createjs.Shape();
-	line.graphics.setStrokeStyle(1,0,0,10,true).beginStroke("#999").moveTo(0,66.5).lineTo(1000,66.5);
-	var line2 = new createjs.Shape();
-	line2.graphics.setStrokeStyle(1,0,0,10,true).beginStroke("#ccc").moveTo(0,100.5).lineTo(100,100.5);
-	game.stage.addChild(line);
-	game.stage.addChild(block);
 	
 	game.world = new MarioWorld(this);
 	game.stage.addChild(this.world.container);
@@ -760,6 +762,7 @@ function begin(game) {
 }
 
 function getInspectors(game) {
+	var hBox = game.mario.getHitbox();
 	var rval = [
 		{id: "xpos", val:game.mario.x, base:16},
 		{id: "ypos", val:game.mario.y, base:16},
@@ -774,8 +777,8 @@ function getInspectors(game) {
 		{id: "MomentumDir", val:game.mario.momentumDir, base:16},
 		{id: "Gravity", val:game.mario.gravity, base:16},
 		{id: "GravityA", val:game.mario.gravityA, base:16},
-		{id: "collision-x", val:game.mario.collision.x, base:16},
-		{id: "collision-y", val:game.mario.collision.y, base:16},
+		{id: "collision-tl", val:hBox.x, base:16},
+		{id: "collision-tr", val:hBox.y, base:16},
 		{id: "groundTest", val:game.mario.collision.groundTest},
 		{id: "levelEntryFlag", val:game.mario.levelEntryFlag}
 	]
@@ -797,12 +800,16 @@ function updateInspectors(game) {
 		var id = inspectors[i].id;
 		var val = inspectors[i].val;
 		var str = val;
-		if ( 'base' in inspectors[i] ) {
-			if (inspectors[i].base == 16) {
-				str = "0x" + inspectors[i].val.toString(inspectors[i].base);
+		if (typeof(inspectors[i].val) != 'undefined') {
+			if ( 'base' in inspectors[i] ) {
+				if (inspectors[i].base == 16) {
+					str = "0x" + inspectors[i].val.toString(inspectors[i].base);
+				}
 			}
+			$("#" + id).text(str);
+		} else {
+			$("#" + id).text(" undefined ");
 		}
-		$("#" + id).text(str);
 	}
 }
 
@@ -810,6 +817,9 @@ function tick(event) {
 	if (!event.paused || game.input.isKeyDown['tick']) {
 		game.input.tick();
 		game.mario.doLogic(game);
+		if (game.mario.showHitbox) {
+			game.mario.drawHitbox(game);
+		}
 		game.stage.update();
 		game.overlay.stage.update();
 		updateInspectors(game)
