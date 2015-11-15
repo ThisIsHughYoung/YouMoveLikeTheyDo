@@ -83,6 +83,9 @@ function Mario(game) {
 	// L+R:   00000011
 	this.idir = 0x01;
 	
+	// int: Same as dir, but storing direction of aerial momentum.
+	this.momentumDir = 1;
+	
 	// uint: The current walkcycle sprite being displayed (0-2)
 	this.walkcycleIndex = 0;
 	// uint: The number of frames left before we cycle to the next
@@ -99,9 +102,16 @@ function Mario(game) {
 	this.speed = 0;
 	this.ySpeed = 0;
 	
+	this.gravity = 0x280;
+	this.gravityA = 0x280;
+	
+	// hex: Initial running speed at beginning of jump
+	this.jumpInitialSpeed = 0;
+	
 	// uint: The maximum speed at which a player can walk/run
 	// (1 pixel = 0x1000)
 	this.maxSpeed = 0x18FF;
+	this.maxAirSpeed = 0x18FF;
 	
 	// int: Player position (1 pixel = 0x10)
 	this.x = 0;
@@ -112,6 +122,8 @@ function Mario(game) {
 	
 	// uint: number of frames since we released the B button
 	this.framesSinceBReleased = 0;
+	
+	this.levelEntryFlag = true;
 	
 	this.collision = {
 		groundTest: false,
@@ -170,26 +182,43 @@ Mario.prototype.doCollision = function(game) {
 	this.collision.h = this.height - 16 + 12;
 	
 	this.collision.groundTest = false;
-	this.ground = false;
-	//if (this.ground == false) {
-		if (Math.sign(this.ySpeed) >= 0) {
-			var lCoord = [this.collision.x, this.collision.y + this.collision.h];
-			var rCoord = [this.collision.x + this.collision.w, this.collision.y + this.collision.h];
-		
-			var lTile = getTileAtPixel(lCoord);
-			var rTile = getTileAtPixel(rCoord);
-		
-			var lBlock = game.world.getBlockAtTile(lTile);
-			var rBlock = game.world.getBlockAtTile(rTile);
-		
-			if (lBlock.id == 1 || rBlock.id == 1) {
-				if (lCoord[1] % 16 < 5) {
-					this.collision.groundTest = true;
-					this.ground = true;
-				}
+	if (Math.sign(this.ySpeed) >= 0) {
+		var blCoord = [this.collision.x, this.collision.y + this.collision.h];
+		var brCoord = [this.collision.x + this.collision.w, this.collision.y + this.collision.h];
+	
+		var blTile = getTileAtPixel(blCoord);
+		var brTile = getTileAtPixel(brCoord);
+	
+		var blBlock = game.world.getBlockAtTile(blTile);
+		var brBlock = game.world.getBlockAtTile(brTile);
+	
+		if (blBlock.id == 1 || brBlock.id == 1) {
+			if (blCoord[1] % 16 < 5) {
+				this.collision.groundTest = true;
+				this.ground = true;
+				this.levelEntryFlag = false;
 			}
 		}
-	//}
+	}
+	
+	if (!this.collision.groundTest && this.ground) {
+		this.jumpInitialSpeed = Math.abs(this.speed);
+		this.ground = false;
+	}
+	
+	this.collision.wallTest = false;
+	var tlCoord = [this.collision.x, this.collision.y];
+	var trCoord = [this.collision.x + this.collision.w, this.collision.y];
+	
+	var tlTile = getTileAtPixel(tlCoord);
+	var trTile = getTileAtPixel(trCoord);
+
+	var tlBlock = game.world.getBlockAtTile(tlTile);
+	var trBlock = game.world.getBlockAtTile(trTile);
+	
+	if (tlBlock.id == 1 || trBlock.id == 1) {
+		this.collision.wallTest = true;
+	}
 }
 
 Mario.prototype.doGroundEjection = function(game) {
@@ -197,7 +226,21 @@ Mario.prototype.doGroundEjection = function(game) {
 }
 
 Mario.prototype.doWallEjection = function(game) {
+	this.speed = 0;
 	
+	// if air: eject opp of momentum
+	if (true) {
+		this.x += 0x10 * -this.momentumDir;
+	}
+	
+	// if ground: 
+}
+
+Mario.prototype.doBorderEjection = function(game) {
+	if (this.collision.x < 0) {
+		this.x = -0x30;
+		this.speed = 0;
+	}
 }
 
 Mario.prototype.doLogic = function(game) {
@@ -205,9 +248,24 @@ Mario.prototype.doLogic = function(game) {
 		if (game.input.isKeyDown['a']) {
 			this.state = 3;
 			this.sprite.gotoAndPlay('jump');
-			this.ySpeed = -0x4000;
 			this.ground = false;
-			this.doAir(game);
+			this.jumpInitialSpeed = Math.abs(this.speed);
+			this.ySpeed = (this.jumpInitialSpeed < 0x2500) ? -0x4000 : -0x5000;
+			if (this.jumpInitialSpeed < 0x1000) {
+				this.gravityA = 0x200;
+				this.gravity = 0x700;
+			} else if (this.jumpInitialSpeed < 0x2500) {
+				this.gravityA = 0x1E0;
+				this.gravity = 0x600;
+			} else {
+				this.gravityA = 0x280;
+				this.gravity = 0x900;
+			}
+			if (this.jumpInitialSpeed < 0x1900) {
+				this.maxAirSpeed = 0x18FF;
+			} else {
+				this.maxAirSpeed = 0x28FF
+			}
 		}
 	}
 	
@@ -225,11 +283,6 @@ Mario.prototype.doLogic = function(game) {
 	// PHYSICS:
 	// Step 1: Check for collisions, and set flags accordingly
 	this.doCollision(game);
-	if (this.ground) {
-		//this.doGround(game);
-	} else {
-		//doAir?!?
-	}
 	
 	// Step 2: If Mario has taken damage, do stuff
 	// TODO
@@ -242,6 +295,8 @@ Mario.prototype.doLogic = function(game) {
 	if (this.collision.wallTest) {
 		this.doWallEjection(game)
 	}
+	
+	this.doBorderEjection(game);
 	
 	
 	if (this.idir & 2) {
@@ -470,19 +525,65 @@ Mario.prototype.doWalkCycle = function() {
 }
 
 Mario.prototype.doAir = function(game) {
-	// Don't change the sprite! This is to match NES behaviour
+	// Match NES behaviour: only change the sprite if Mario
+	// was standing (i.e. when level spawns Mario above ground)
+	
+	var gravityA;
+	var gravity;
+	var isLeft = (game.input.kb['left']) ? true:false;
+	var isRight = (game.input.kb['right']) ? true:false;
+	var isInput = (isLeft || isRight) ? true:false;
+	
+	// Air input direction - As usual, right takes precedence
+	// in SMB's input scanning.
+	var airidir = (isRight) ? 1 : -1;
+	
+	
+	var momentumchange = 0;
+	
+	// Update Vertical Speed
 	if (game.input.kb['a']) {
-		this.ySpeed += 0x200;
+		this.ySpeed += this.gravityA;
 	} else {
-		this.ySpeed += 0x700;
+		this.ySpeed += this.gravity;
 	}
 	
 	this.ySpeed = Math.min(this.ySpeed, 0x4800);
 	
-	if (this.isOnTile()) {
-		//do projection;
+	// TODO: These is jdaster64's rules; verify this
+	if (this.ySpeed > 0x4800) {
+		this.ySpeed = 0x4000;
 	}
 	
+	// Update Horizontal Speed
+	// see jdaster64 for rules
+	if (isInput) {
+		if (Math.abs(this.speed) < 0x1900) {
+			// Low speeds
+			if (airidir == -Math.sign(this.speed) && this.jumpInitialSpeed >= 0x1D00) {
+				// If we're reducing momentum after jumping from a running start,
+				// give the player more control over momentum even at low speeds
+				this.speed += 0x00D0 * airidir;
+			} else {
+				// In all other cases, player's ability to change momentum
+				// at low speeds should be slightly reduced
+				this.speed += 0x0098 * airidir;
+			}
+		} else {
+			// High speeds:
+			// If the horizontal momentum is high, give the player more
+			// control over it.
+			this.speed += 0x00E4 * airidir;
+		}
+	}
+	
+	if (Math.abs(this.speed) > this.maxAirSpeed) {
+		this.speed = this.maxAirSpeed * Math.sign(this.speed);
+	}
+	
+	if (this.speed != 0) {
+		this.momentumDir = Math.sign(this.speed);
+	}
 }
 
 function getTileAtPixel(coords) {
@@ -629,9 +730,13 @@ function getInspectors(game) {
 		{id: "ground", val:game.mario.ground},
 		{id: "", val:" "},
 		{id: "yspeed", val:game.mario.ySpeed, base:16},
+		{id: "MomentumDir", val:game.mario.momentumDir, base:16},
+		{id: "Gravity", val:game.mario.gravity, base:16},
+		{id: "GravityA", val:game.mario.gravityA, base:16},
 		{id: "collision-x", val:game.mario.collision.x, base:16},
 		{id: "collision-y", val:game.mario.collision.y, base:16},
-		{id: "groundTest", val:game.mario.collision.groundTest}
+		{id: "groundTest", val:game.mario.collision.groundTest},
+		{id: "levelEntryFlag", val:game.mario.levelEntryFlag}
 	]
 	return rval;
 }
