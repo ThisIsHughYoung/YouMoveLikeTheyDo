@@ -99,7 +99,7 @@ var Game = function(title, w, h, inputs) {
 	this.input = new GameInput(inputs);
 	
 	
-	this.assets = new createjs.LoadQueue(false);
+	this.assets = {};
 	
 	this.stage = new createjs.Stage("gameCanvas");
 	/*this.stage.canvas.width = w;
@@ -123,17 +123,17 @@ var Game = function(title, w, h, inputs) {
 
 Game.prototype.loadManifest = function(m) {
 	if (window.location.protocol == 'file:') {
-		this.assets = new createjs.LoadQueue(false);
+		this.assets.loader = new createjs.LoadQueue(false);
 	} else {
-		this.assets = new createjs.LoadQueue();
+		this.assets.loader = new createjs.LoadQueue();
 	} 
 	if (this.debug >= 1) {
-		this.assets.on("fileload", function(event){
+		this.assets.loader.on("fileload", function(event){
 			console.log("Loaded: " + event.item.id + " (" + event.item.src + ")");
 		}, this)
 	}
-	this.assets.on("complete", this.loadComplete, this);
-	this.assets.loadManifest(manifest);
+	this.assets.loader.on("complete", this.loadComplete, this);
+	this.assets.loader.loadManifest(manifest);
 };
 
 Game.prototype.loadComplete = function() {
