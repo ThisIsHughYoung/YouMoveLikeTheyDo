@@ -26,13 +26,108 @@ function MarioGame() {
 	this.resizeFrame(2);
 	this.world = null;
 	
-	this.assets.tileset1 = null;
-	this.assets.tileset2 = null;
-	this.assets.tileset3 = null;
+	// block "bump" animation
+	this.isBumpAnim = false;
+	this.bumpAnim = {
+		tx: 0,
+		ty: 0,
+		rx: 0,
+		ry: 0,
+		frame: 0,
+		ySpeed: 0,
+		yOffset: 0,
+		block: null,
+		sprite: null,
+		newTID: 0
+		
+	}
+	
+	this.assets.tilesets = {};
 }
 
 MarioGame.prototype = Object.create(Game.prototype);
-MarioGame.prototype.constructor = MarioGame
+MarioGame.prototype.constructor = MarioGame;
+
+MarioGame.prototype.startBumpAnim = function(coords) {
+	var rCoords = getTileCoords(coords);
+	var block = this.world.getBlockAtTile(coords);
+	
+	if (block.bump == null || block.bump == false || this.isBumpAnim) {
+		return;
+	}
+	
+	var tid = (block.bumptid == null) ? block.tile : block.bumptid;
+	block.id = 1;
+	this.isBumpAnim = true;
+	this.bumpAnim.frame = 0;
+	this.bumpAnim.tx = coords[0];
+	this.bumpAnim.ty = coords[1];
+	this.bumpAnim.rx = rCoords[0];
+	this.bumpAnim.ry = rCoords[1];
+	this.ySpeed = 0;
+	this.yOffset = 0;
+	
+	this.bumpAnim.sprite = new createjs.Sprite(game.assets.tilesets[block.tileset], 
+		this.world.palettes[block.tileset - 1] + tid)
+	this.bumpAnim.sprite.stop();
+	this.world.container.removeChild(block.bitmap)
+	this.world.container.addChild(this.bumpAnim.sprite)
+	this.bumpAnim.sprite.x = this.bumpAnim.rx;
+	
+	console.log("Bumped block " + coords);
+}
+
+MarioGame.prototype.doBumpAnim = function() {
+	if (this.bumpAnim.frame >= 16) {
+		var block = this.world.getBlockAtTile([this.bumpAnim.tx, this.bumpAnim.ty]);
+		this.isBumpAnim = false;
+		this.world.container.removeChild(this.bumpAnim.sprite);
+		this.world.container.addChild(block.bitmap)
+		
+		// Change bumpable property if necessary
+		if (typeof block.bump == 'number') {
+			block.bump--;
+			if (block.bump <= 0) {
+				if (block.newtid != null) {
+					block.tile = block.newtid
+					setTileBitmap(this.world, block)
+				}
+				block.bump = false;
+			}
+		} // else if timeout??
+		
+		// spawn item if it exists
+		return;
+	} else if (this.bumpAnim.frame >= 15) {
+		this.bumpAnim.ySpeed = 0;
+		this.bumpAnim.yOffset = 0;
+	} else if (this.bumpAnim.frame == 0) {
+		this.bumpAnim.ySpeed = -0x20;
+	} else {
+		this.bumpAnim.ySpeed += 0x05;
+	}
+	this.bumpAnim.yOffset += this.bumpAnim.ySpeed;
+	
+	this.bumpAnim.sprite.y = (this.bumpAnim.ry * 0x10) + this.bumpAnim.yOffset;
+	this.bumpAnim.sprite.y = (this.bumpAnim.sprite.y & 0xFFFFF0) / 0x10;
+	this.bumpAnim.frame++;
+}
+
+MarioGame.prototype.doCamera = function() {
+	var prevscreenx = this.mario.screenx
+	this.mario.screenx = this.mario.x - this.world.camerax;
+	if (this.mario.speed > 0) {
+		if (this.mario.screenx > 0x500) {
+			if ((this.mario.screenx - prevscreenx) >= 0x10 ) {
+				this.world.camerax += Math.min(0x10, (this.mario.speed & 0xFF00) / 0x100);
+			}
+		} 
+		if (this.mario.screenx > 0x700) {
+			this.world.camerax = this.mario.x - 0x700;
+		}
+	}
+	this.world.container.x = -(this.world.camerax & 0xFFFFFFF0) / 0x10;
+}
 
 var smallMarioAnim = {
 	stand: 0,
@@ -67,7 +162,7 @@ function getTileCoords(coords) {
 }
 
 function getLevelTile(chunk, column, block) {
-	return [ chunk*2 + column , block];
+	return [ parseInt(chunk)*2 + parseInt(column) , block];
 }
 
 function getLevelCoords(chunk, column, block) {
@@ -84,13 +179,13 @@ function init() {
 }
 
 function onLoad(game) {
-	game.assets.tileset1 = new createjs.SpriteSheet({
+	game.assets.tilesets[1] = new createjs.SpriteSheet({
 		images: [game.assets.loader.getResult("tileset1")],
 		frames: {width:16, height:16}})
-	game.assets.tileset2 = new createjs.SpriteSheet({
+	game.assets.tilesets[2] = new createjs.SpriteSheet({
 		images: [game.assets.loader.getResult("tileset2")],
 		frames: {width:16, height:16}})
-	game.assets.tileset3 = new createjs.SpriteSheet({
+	game.assets.tilesets[3] = new createjs.SpriteSheet({
 		images: [game.assets.loader.getResult("tileset3")],
 		frames: {width:16, height:16}})
 		
@@ -112,6 +207,9 @@ function begin(game) {
 function getInspectors(game) {
 	var hBox = game.mario.getHitbox();
 	var rval = [
+		{id: "camerax", val:game.world.camerax, base:16},
+		{id: "", val:" "},
+		{id: "screenx", val:game.mario.screenx, base:16},
 		{id: "xpos", val:game.mario.x, base:16},
 		{id: "ypos", val:game.mario.y, base:16},
 		{id: "absspeed", val:((Math.abs(game.mario.speed)&0xFFF00)/0x100), base:16},
@@ -128,6 +226,8 @@ function getInspectors(game) {
 		{id: "collision-tl", val:hBox.x, base:16},
 		{id: "collision-tr", val:hBox.y, base:16},
 		{id: "groundTest", val:game.mario.collision.groundTest},
+		{id: "wallTest", val:game.mario.collision.wallTest},
+		{id: "bumpTest", val:game.mario.collision.bumpTest},
 		{id: "levelEntryFlag", val:game.mario.levelEntryFlag}
 	]
 	return rval;
@@ -167,6 +267,12 @@ function tick(event) {
 		game.mario.doLogic(game);
 		if (game.mario.showHitbox) {
 			game.mario.drawHitbox(game);
+		}
+		if (game.isBumpAnim) {
+			game.doBumpAnim();
+		}
+		if (!game.world.camerafixed) {
+			game.doCamera();
 		}
 		game.stage.update();
 		game.overlay.stage.update();

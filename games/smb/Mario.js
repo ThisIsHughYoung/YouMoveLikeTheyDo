@@ -59,9 +59,12 @@ function Mario(game) {
 	this.maxSpeed = 0x18FF;
 	this.maxAirSpeed = 0x18FF;
 	
-	// int: Player position (1 pixel = 0x10)
-	this.x = 0;
-	this.y = 0xAC0;
+	// hex: Player position (1 pixel = 0x10)
+	this.x = 0x280;
+	this.y = 0xC10;
+	
+	// hex: Player position relative to camera
+	this.screenx = 0;
 	
 	// uint: Mario's height in pixels (either 16 or 32)
 	this.height = 16;
@@ -75,6 +78,7 @@ function Mario(game) {
 		//purely for debugging
 		groundTest: false,
 		wallTest: false,
+		wallTestUpper: false,
 		bumpTest: false
 	};
 	
@@ -86,7 +90,7 @@ function Mario(game) {
 	})
 	
 	this.hitbox = new createjs.Shape();
-	this.showHitbox = false;
+	this.showHitbox = true;
 	
 	// Container for all graphical objects
 	this.container = new createjs.Container();
@@ -116,17 +120,17 @@ Mario.prototype.isOnTile = function() {
 }
 
 Mario.prototype.getHitbox = function() {
-	return { x:((this.x - (this.x & 0xF)) / 0x10) + 3, 
-		y:((this.y - (this.y & 0xF)) / 0x10) + 3, 
-		w:10, 
-		h:this.height-16 + 12};
+	return { x:((this.x - (this.x & 0xF)) / 0x10) + 3 + 1, 
+		y:((this.y - (this.y & 0xF)) / 0x10) + 4, 
+		w:9, 
+		h:this.height-16 + 11};
 }
 
 Mario.prototype.drawHitbox = function(game) {
 	var hBox = this.getHitbox();
-	game.stage.removeChild(this.hitbox);
+	game.world.container.removeChild(this.hitbox);
 	this.hitbox = new createjs.Shape();
-	this.hitbox.graphics.setStrokeStyle(1,0,0,10,true).beginStroke("#0F0").drawRect(hBox.x + 0.5, hBox.y + 0.5, 10, 12);
+	this.hitbox.graphics.setStrokeStyle(1,0,0,10,true).beginStroke("#0F0").drawRect(hBox.x - 1 + 0.5, hBox.y + 0.5, 10, 11);
 	game.world.container.addChild(this.hitbox);
 }
 
@@ -136,15 +140,21 @@ Mario.prototype.drawHitbox = function(game) {
 // TAS-ers are known for, without introducing any of our own!
 Mario.prototype.doCollision = function(game) {
 
-	this.doBorderEjection(game)
+	this.doBorderEjection(game);
 	
-	this.doGroundEjection(game)
+	this.doGroundTest(game);
 	
-	this.doBumpEjection(game)
-	this.doWallEjection(game)
+	this.doBumpEjection(game);
+	this.doWallEjection(game);
+	
+	this.doGroundTest(game);
+	
+	this.doGroundEjection(game);
+	
+
 }
 
-Mario.prototype.doGroundEjection = function(game) {
+Mario.prototype.doGroundTest = function(game) {
 	var hBox = this.getHitbox();
 	this.collision.groundTest = false;
 	if (Math.sign(this.ySpeed) >= 0) {
@@ -165,7 +175,12 @@ Mario.prototype.doGroundEjection = function(game) {
 			}
 		}
 	}
-	
+}
+
+Mario.prototype.doWallTest = function(game) {
+}
+
+Mario.prototype.doGroundEjection = function(game) {
 	if (!this.collision.groundTest && this.ground) {
 		this.jumpInitialSpeed = Math.abs(this.speed);
 		this.ground = false;
@@ -174,6 +189,13 @@ Mario.prototype.doGroundEjection = function(game) {
 		} else {
 			this.maxAirSpeed = 0x28FF
 		}
+		
+		var f = this.sprite.currentFrame;
+		
+		if (f < 1 || (f > 3 && f != 5)) {
+			this.sprite.gotoAndStop(1);
+		}
+		
 	}
 	if (this.collision.groundTest) {
 		this.y = (this.y & 0xFFF00) + 0x10;
@@ -183,20 +205,48 @@ Mario.prototype.doGroundEjection = function(game) {
 Mario.prototype.doWallEjection = function(game) {
 	var hBox = this.getHitbox();
 	this.collision.wallTest = false;
+	
+	var lCollision = false;
+	var rCollision = false;
+	
 	var tlCoord = [hBox.x, hBox.y];
 	var trCoord = [hBox.x + hBox.w, hBox.y];
+	var blCoord = [hBox.x, hBox.y + hBox.h - 3];
+	var brCoord = [hBox.x + hBox.w, hBox.y + hBox.h - 3];
 	
 	var tlTile = getTileAtPixel(tlCoord);
 	var trTile = getTileAtPixel(trCoord);
+	var blTile = getTileAtPixel(blCoord);
+	var brTile = getTileAtPixel(brCoord);
 
 	var tlBlock = game.world.getBlockAtTile(tlTile);
 	var trBlock = game.world.getBlockAtTile(trTile);
+	var blBlock = game.world.getBlockAtTile(blTile);
+	var brBlock = game.world.getBlockAtTile(brTile);
 	
 	if (tlBlock.id == 1 || trBlock.id == 1) {
-		hBox.wallTest = true;
+		this.collision.wallTest = true;
 	}
 	
-	if (hBox.wallTest) {
+	if (!this.ground && (blBlock.id == 1 || brBlock.id == 1)) {
+		this.collision.wallTest = true;
+	}
+	
+	if (this.collision.wallTest) {
+		if (!this.ground) {
+			if (blBlock.id == 1) {
+				lCollision = true;
+			}
+			if (brBlock.id == 1) {
+				rCollision = true;
+			}
+		}
+		if (tlBlock.id == 1) {
+			lCollision = true;
+		}
+		if (trBlock.id == 1) {
+			rCollision = true;
+		}
 		this.speed = 0;
 	
 		// if falling: eject opp of momentum
@@ -204,16 +254,7 @@ Mario.prototype.doWallEjection = function(game) {
 			this.x += 0x10 * -this.momentumDir;
 		} else {
 			// if ascending or on ground, try to eject towards empty tile
-			var tlCoord = [hBox.x, hBox.y];
-			var trCoord = [hBox.x + hBox.w, hBox.y];
-		
-			var tlTile = getTileAtPixel(tlCoord);
-			var trTile = getTileAtPixel(trCoord);
-			
-			var tlBlock = game.world.getBlockAtTile(tlTile);
-			var trBlock = game.world.getBlockAtTile(trTile);
-	
-			if (tlBlock.id != 1 || trBlock.id == 1) {
+			if (!lCollision && rCollision) {
 				this.x -= 0x10;
 			} else {
 				this.x += 0x10;
@@ -225,36 +266,35 @@ Mario.prototype.doWallEjection = function(game) {
 Mario.prototype.doBumpEjection = function(game) {
 	var hBox = this.getHitbox();
 	var bumpCoord = [hBox.x + Math.floor(hBox.w/2), hBox.y]
+	var bumpTile, bumpBlock;
+	
 	this.collision.bumpTest = false;
 	
 	if (this.ySpeed < 0) {
-		var bumpTile = getTileAtPixel(bumpCoord);
-		var bumpBlock = game.world.getBlockAtTile(bumpTile);
-		if (bumpBlock.id == 1) {
+		bumpTile = getTileAtPixel(bumpCoord);
+		bumpBlock = game.world.getBlockAtTile(bumpTile);
+		if ((bumpBlock.id == 1 || bumpBlock.bump == true) && bumpCoord[1] % 0x10 > 0xA) {
 			this.collision.bumpTest = true;
 		}
 	}
 	
 	if (this.collision.bumpTest) {
 		this.y = (this.y & 0xFFFF00) + 0x100 - 0x20;
-		if (game.input.kb['a']) {
-			this.ySpeed = this.gravityA * 2;
-		} else {
-			this.ySpeed = this.gravity * 2;
-		}
+		this.ySpeed = this.gravity * 2;
+		game.startBumpAnim(getTileAtPixel(bumpCoord));
 	}
 }
 
 Mario.prototype.doBorderEjection = function(game) {
 	var hBox = this.getHitbox();
-	if (hBox.x < 0) {
-		this.x = -0x30;
+	if (hBox.x < (game.world.camerax - (game.world.camerax & 0xF)) / 0x10) {
+		this.x = game.world.camerax - 0x30;
 		this.speed = 0;
 	}
-	if (hBox.x + hBox.w >= game.w ) {
+	/*if (hBox.x + hBox.w >= game.w ) {
 		this.x = (game.w * 0x10) - 0xE0;
 		this.speed = 0;
-	}
+	}*/
 }
 
 Mario.prototype.doLogic = function(game) {
@@ -275,6 +315,7 @@ Mario.prototype.doLogic = function(game) {
 				this.gravityA = 0x280;
 				this.gravity = 0x900;
 			}
+			this.ySpeed -= this.gravityA;
 			if (this.jumpInitialSpeed < 0x1900) {
 				this.maxAirSpeed = 0x18FF;
 			} else {
@@ -291,11 +332,10 @@ Mario.prototype.doLogic = function(game) {
 	
 	this.x += (this.speed - (this.speed & 0xFF)) / 0x100;
 	if (!this.ground) {
-		this.y += (this.ySpeed - (this.ySpeed & 0xFF)) / 0x100;
+		this.y += Math.abs(this.ySpeed - (this.ySpeed & 0xFF)) / 0x100 * Math.sign(this.ySpeed);
 	}
 	
 	this.doCollision(game);
-	
 	
 	if (this.idir & 2) {
 		this.sprite.scaleX = -1;
@@ -540,18 +580,13 @@ Mario.prototype.doAir = function(game) {
 	var momentumchange = 0;
 	
 	// Update Vertical Speed
-	if (game.input.kb['a']) {
+	if (game.input.kb['a'] && this.ySpeed < 0) {
 		this.ySpeed += this.gravityA;
 	} else {
 		this.ySpeed += this.gravity;
 	}
 	
-	this.ySpeed = Math.min(this.ySpeed, 0x4800);
-	
-	// TODO: These is jdaster64's rules; verify this
-	if (this.ySpeed > 0x4800) {
-		this.ySpeed = 0x4000;
-	}
+	this.ySpeed = Math.min(this.ySpeed, 0x4000);
 	
 	// Update Horizontal Speed
 	// see jdaster64 for rules
