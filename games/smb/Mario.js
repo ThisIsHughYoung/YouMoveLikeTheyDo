@@ -90,7 +90,7 @@ function Mario(game) {
 	})
 	
 	this.hitbox = new createjs.Shape();
-	this.showHitbox = true;
+	this.showHitbox = false;
 	
 	// Container for all graphical objects
 	this.container = new createjs.Container();
