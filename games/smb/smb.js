@@ -4,7 +4,8 @@ var manifest = [
 	{id:"tileset2", src:"assets/sprites/tileset2.png"},
 	{id:"tileset3", src:"assets/sprites/tileset3.png"},
 	{id:"block", src:"assets/sprites/block.png"},
-	{id:"mario", src:"assets/sprites/mario.png"},
+	{id:"mario-s", src:"assets/sprites/mario-small.png"},
+	{id:"mario-b", src:"assets/sprites/mario-big.png"},
 ];
 
 var defaultKeybinds = {

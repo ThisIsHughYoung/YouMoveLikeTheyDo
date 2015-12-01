@@ -17,6 +17,8 @@ world[1][1] = {
 	
 	camerafixed:false,
 	
+	worldType: 0,
+	
 	bgColor: '#6888fc', // NES palette 22
 	
 	palettes: [0,0,0],

@@ -13,8 +13,29 @@ function Mario(game) {
 	// See NES RAM Address 0x001D
 	this.floatState = 0;
 	
+	// bool: track powerups
+	this.isBig = false;
+	this.isFire = false;
+	this.isStarman = false;
+	this.isInvuln = false;
+	
+	// array: starman palette colours
+	this.starmanPalettes = [];
+	
+	// uint: timer for powerup animations
+	this.starmanTimer = 0;
+	this.starmanAnimCycle = 0;
+	this.starmanAnimIndex = 0;
+	this.powerupTimer = 0;
+	this.powerupAnimCycle = 0;
+	
+	// uint: damage boost timer
+	this.dbTimer = 0;
+	
 	// Set to true if we are "skidding"
 	this.skid = false;
+	
+	this.crouch = false;
 	
 	// Deprecated - do not use
 	this.state = 0;
@@ -83,10 +104,16 @@ function Mario(game) {
 	};
 	
 	// CreateJS Spritesheet object
-	this.spritesheet = new createjs.SpriteSheet({
-		images: [this.game.assets.loader.getResult("mario")],
-		frames: {width:16,height:16,count:13,regX:0,regY:0},
-		animations: smallMarioAnim
+	this.spritesheetsmall = new createjs.SpriteSheet({
+		images: [this.game.assets.loader.getResult("mario-s")],
+		frames: {width:16,height:16,count:14*11,regX:0,regY:0},
+		//animations: smallMarioAnim
+	})
+	
+	this.spritesheetbig = new createjs.SpriteSheet({
+		images: [this.game.assets.loader.getResult("mario-b")],
+		frames: {width:16,height:16,count:14*11,regX:0,regY:0},
+		//animations: smallMarioAnim // TODO: create array for large anims
 	})
 	
 	this.hitbox = new createjs.Shape();
@@ -96,7 +123,16 @@ function Mario(game) {
 	this.container = new createjs.Container();
 	
 	// Mario's main sprite
-	this.sprite = new createjs.Sprite(this.spritesheet, "stand");
+	this.sprite = new createjs.Sprite(this.spritesheetsmall, 0);
+	
+	// uint: Current frame of animation
+	this.frame = 0;
+	
+	// uint: Current palette index (see spritesheet for reference)
+	this.palette = 0;
+	
+	// uint: Default palette colour to return to (0 for Mario, 1 for Luigi)
+	this.defaultPalette = 0;
 	
 	// ----------------
 	// END DECLARATIONS
@@ -120,6 +156,7 @@ Mario.prototype.isOnTile = function() {
 }
 
 Mario.prototype.getHitbox = function() {
+	// For some reason Mario's hitbox's left edge 1px off from what FCEUX displays
 	return { x:((this.x - (this.x & 0xF)) / 0x10) + 3 + 1, 
 		y:((this.y - (this.y & 0xF)) / 0x10) + 4, 
 		w:9, 
@@ -177,9 +214,6 @@ Mario.prototype.doGroundTest = function(game) {
 	}
 }
 
-Mario.prototype.doWallTest = function(game) {
-}
-
 Mario.prototype.doGroundEjection = function(game) {
 	if (!this.collision.groundTest && this.ground) {
 		this.jumpInitialSpeed = Math.abs(this.speed);
@@ -190,10 +224,10 @@ Mario.prototype.doGroundEjection = function(game) {
 			this.maxAirSpeed = 0x28FF
 		}
 		
-		var f = this.sprite.currentFrame;
+		var f = this.frame;
 		
 		if (f < 1 || (f > 3 && f != 5)) {
-			this.sprite.gotoAndStop(1);
+			this.frame = 1;
 		}
 		
 	}
@@ -297,11 +331,63 @@ Mario.prototype.doBorderEjection = function(game) {
 	}*/
 }
 
+Mario.prototype.beginStarman = function() {
+	this.isStarman = true;
+	this.isInvuln = true;
+	this.starmanTimer = 735;
+	this.starmanAnimCycle = 2;
+	this.starmanAnimIndex = 0;
+}
+
+Mario.prototype.doStarman = function() {
+	this.starmanTimer--;
+	if (this.starmanTimer <= 0) {
+		this.isStarman = false;
+		this.isInvuln = false;
+		this.palette = this.defaultPalette;
+		// TODO: reset music
+	} else {
+		this.starmanAnimCycle--;
+		if (this.starmanAnimCycle < 0) {
+			
+			if (this.starmanTimer >= 145) {
+				this.starmanAnimCycle = 2;
+			} else {
+				// Nintendo polish: For the last 2.4 seconds or so,
+				// Mario's colours cycle at 1/4 the normal rate so
+				// the player can prepare to return to regular state.
+				// Note that Nintendo chose a visual cue for this game,
+				// while later games (and Sonic the Hedgehog) go for
+				// more reliable audio cues.
+				this.starmanAnimCycle = 8;
+			}
+			
+			this.starmanAnimIndex++;
+			if (this.starmanAnimIndex > 3) {
+				this.starmanAnimIndex = 0;
+			}
+			// More Nintendo polish: Mario's colour cycles change
+			// depending on the map palettes. I personally am not 100%
+			// sure whether this is strictly a NES hardware limitation
+			// but it sure looks visually more coherent.
+			this.palette = this.starmanPalettes[this.starmanAnimIndex];
+		}
+	}
+}
+
 Mario.prototype.doLogic = function(game) {
+	
+	// Begin with powerup processing, etc.
+	if (this.isStarman) {
+		this.doStarman()
+	}
+	
+	// Actual player logic
+	
 	if (this.ground) {
 		if (game.input.isKeyDown['a']) {
 			this.state = 3;
-			this.sprite.gotoAndPlay('jump');
+			this.frame = 5;
 			this.ground = false;
 			this.jumpInitialSpeed = Math.abs(this.speed);
 			this.ySpeed = (this.jumpInitialSpeed < 0x2500) ? -0x4000 : -0x5000;
@@ -349,6 +435,11 @@ Mario.prototype.doLogic = function(game) {
 		this.sprite.x = 16;
 	} else {
 		this.sprite.x = 0;
+	}
+
+	var paletteSize = (this.isBig) ? 21 : 14;
+	if (this.sprite.currentFrame != (this.palette * paletteSize) + this.frame) {
+		this.sprite.gotoAndStop((this.palette * paletteSize) + this.frame);
 	}
 }
 
@@ -513,18 +604,14 @@ Mario.prototype.doGround = function(game) {
 	
 	// do animation
 	if ((Math.abs(this.speed)) == 0) {
-		if (this.sprite.currentAnimation != 'stand') {
-			this.sprite.gotoAndPlay('stand');
-		}
+		this.frame = 0;
 	} else if (this.idir & tempMDir || Math.abs(this.speed) < marioDefaults.skidTurnSpeed) {
 		// If a button we're pressing matches our direction,
 		// play the "walk" animation. (Don't skid if our speed is within
 		// the skid threshold)
 		this.doWalkCycle();
 	} else {
-		if (this.sprite.currentAnimation != 'skid') {
-			this.sprite.gotoAndPlay('skid');
-		}
+		this.frame = 4;
 	}
 }
 
@@ -537,7 +624,7 @@ Mario.prototype.doGround = function(game) {
 // 0x70d - current sprite index
 Mario.prototype.doWalkCycle = function() {
 	
-	if (this.sprite.currentFrame < 1 || this.sprite.currentFrame > 3) {
+	if (this.frame < 1 || this.frame > 3) {
 		this.walkcycleIndex = 0;
 		this.walkcycleFrame = 1;
 	} else {
@@ -557,9 +644,9 @@ Mario.prototype.doWalkCycle = function() {
 		}
 	}
 	
-	if (this.sprite.currentFrame != this.walkcycleIndex + 1) {
-		this.sprite.gotoAndStop(this.walkcycleIndex + 1);
-	}
+	// +1 because walkcycleIndex is zero-indexed but our first walking
+	// frame is #1
+	this.frame = this.walkcycleIndex + 1;
 }
 
 Mario.prototype.doAir = function(game) {

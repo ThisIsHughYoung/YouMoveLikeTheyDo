@@ -13,6 +13,25 @@ var MarioWorld = function(game, level) {
 	
 	this.palettes = level.palettes;
 	
+	this.worldType = level.worldType;
+	
+	switch(this.worldType) {
+	case 1:
+		game.mario.starmanPalettes = [3,6,7];
+		break;
+	case 2:
+		game.mario.starmanPalettes = [3,8,7];
+		break;
+	case 3:
+		game.mario.starmanPalettes = [3,9,10];
+		break;
+	case 0:
+	default:
+		game.mario.starmanPalettes = [3,4,5];
+		break;
+	}
+	game.mario.starmanPalettes[3] = game.mario.defaultPalette;
+	
 	this.xtiles = 0;
 	this.ytiles = 15;
 	
