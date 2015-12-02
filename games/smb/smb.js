@@ -188,21 +188,25 @@ function init() {
 function bringTheNoise() {
 	game.audio.playing = true;
 	game.audio.bgm.start(0);
+	game.audio.bgm.hasStarted = true;
 }
 
 function changeBGM(id, loop) {
-	game.audio.bgm.stop();
+	if (game.audio.bgm.hasStarted != null) {
+		game.audio.bgm.stop();
+	}
 
 	game.audio.bgm = game.audio.context.createBufferSource();
-	game.audio.bgm.buffer = loader.getResult(id);
+	game.audio.bgm.buffer = game.assets.loader.getResult(id);
 	if (loop == null) loop = false
 	game.audio.bgm.loop = loop;
 	game.audio.bgm.connect(game.audio.context.destination)
 	if (game.audio.playing) {
 		game.audio.bgm.start(0);
+		game.audio.bgm.hasStarted = true;
 	}
 	
-	if (id = "bgm-og") {
+	if (id == "bgm-og") {
 		// Thankfully, the 1-1 music is the only instance in which an
 		// intro section is not included when the music loops. 
 		// It is exactly 1 measure long.
