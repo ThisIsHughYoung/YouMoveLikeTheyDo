@@ -31,9 +31,29 @@ canvas {
 	height:100vh;
 	background-color:#012;
 	padding-right:30px;
+	font-family: monospace;
+	font-size:13px;
+	text-align: right;
+	color:#fff;
+}
+
+#controls {
+	font-weight:bold;
+	padding-bottom: 16px;
+	border-bottom: solid 1px white;
+	
+}
+#controls button {
+		font-weight:normal;
+		margin-bottom:10px;
+}
+
+#inspectors {
+	margin-top:16px;
 }
 
 .entry {
+	font-weight:normal;
 	font-family: monospace;
 	font-size:13px;
 	text-align: right;

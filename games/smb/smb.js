@@ -189,6 +189,7 @@ function bringTheNoise() {
 	game.audio.playing = true;
 	game.audio.bgm.start(0);
 	game.audio.bgm.hasStarted = true;
+	$("#bringthenoise").prop("disabled",true)
 }
 
 function changeBGM(id, loop) {
@@ -277,10 +278,12 @@ function getInspectors(game) {
 
 function createInspectors(game) {
 	var inspectors = getInspectors(game)
+	var id;
+	var entry;
 	for (var i in inspectors) {
-		var id = inspectors[i].id;
-		var entry = $("<div class='entry'>" + id + ": <span id='" + id + "'> - </span></div>")
-		$("#side").append(entry)
+		id = inspectors[i].id;
+		entry = $("<div class='entry'>" + id + ": <span id='" + id + "'> - </span></div>")
+		$("#inspectors").append(entry)
 	}
 }
 
