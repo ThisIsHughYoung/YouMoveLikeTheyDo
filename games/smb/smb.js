@@ -8,6 +8,8 @@ var manifest = [
 	{id:"mario-b", src:"assets/sprites/mario-big.png"},
 	{id:"bgm-og", src:"assets/music/og.mp3"},
 	{id:"bgm-starman", src:"assets/music/starman.mp3"},
+	{id:"snd-bump", src:"assets/sound/bump.mp3"},
+	{id:"snd-jump-small", src:"assets/sound/jump-small.mp3"},
 ];
 
 var defaultKeybinds = {
@@ -81,6 +83,12 @@ MarioGame.prototype.startBumpAnim = function(coords) {
 	this.bumpAnim.sprite.x = this.bumpAnim.rx;
 	
 	console.log("Bumped block " + coords);
+}
+
+function playSound(snd) {
+	if (game.audio.isPlaying) {
+		createjs.Sound.play(snd);
+	}
 }
 
 MarioGame.prototype.doBumpAnim = function() {
@@ -186,13 +194,21 @@ function init() {
 }
 
 function bringTheNoise() {
-	game.audio.playing = true;
+	$("#bringthenoise").prop("disabled",true)
+	game.audio.isPlaying = true;
+	if (window.location.protocol == 'file:') {
+		console.log("bgm audio has been disabled for file: protocol")
+		return;
+	}
 	game.audio.bgm.start(0);
 	game.audio.bgm.hasStarted = true;
-	$("#bringthenoise").prop("disabled",true)
 }
 
 function changeBGM(id, loop) {
+	if (window.location.protocol == 'file:') {
+		return;
+	}
+	
 	if (game.audio.bgm.hasStarted != null) {
 		game.audio.bgm.stop();
 	}
@@ -201,8 +217,10 @@ function changeBGM(id, loop) {
 	game.audio.bgm.buffer = game.assets.loader.getResult(id);
 	if (loop == null) loop = false
 	game.audio.bgm.loop = loop;
-	game.audio.bgm.connect(game.audio.context.destination)
-	if (game.audio.playing) {
+	
+	game.audio.bgm.connect(game.audio.gainNode);
+	
+	if (game.audio.isPlaying) {
 		game.audio.bgm.start(0);
 		game.audio.bgm.hasStarted = true;
 	}
@@ -230,7 +248,14 @@ function onLoad(game) {
 	window.AudioContext = window.AudioContext || window.webkitAudioContext;
 	game.audio.context = new AudioContext();
 	
+	game.audio.gain = 0.5;
+	game.audio.gainNode = game.audio.context.createGain();
+	game.audio.gainNode.gain.value = game.audio.gain;
+	game.audio.gainNode.connect(game.audio.context.destination);
+	
 	game.audio.bgm = game.audio.context.createBufferSource();
+	
+	createjs.Sound.volume = 0.5;
 	
 	begin(game);
 }
@@ -306,8 +331,15 @@ function updateInspectors(game) {
 	}
 }
 
+function audioTick(game) {
+	//update gain values here
+	game.audio.gainNode.gain.value = game.audio.gain;
+}
+
 function tick(event) {
 	if (!event.paused || game.input.isKeyDown['tick']) {
+		audioTick(game);
+		
 		game.input.tick();
 		game.mario.doLogic(game);
 		if (game.mario.showHitbox) {

@@ -316,6 +316,7 @@ Mario.prototype.doBumpEjection = function(game) {
 		this.y = (this.y & 0xFFFF00) + 0x100 - 0x20;
 		this.ySpeed = this.gravity * 2;
 		game.startBumpAnim(getTileAtPixel(bumpCoord));
+		playSound('snd-bump');
 	}
 }
 
@@ -408,6 +409,7 @@ Mario.prototype.doLogic = function(game) {
 			} else {
 				this.maxAirSpeed = 0x28FF
 			}
+			playSound('snd-jump-small');
 		}
 	}
 	

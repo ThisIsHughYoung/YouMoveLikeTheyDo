@@ -99,7 +99,7 @@ var Game = function(title, w, h, inputs) {
 	this.input = new GameInput(inputs);
 	
 	this.audio = {};
-	this.audio.playing = false;
+	this.audio.isPlaying = false;
 	
 	this.assets = {};
 	
