@@ -339,6 +339,11 @@ Mario.prototype.doBorderEjection = function(game) {
 }
 
 Mario.prototype.beginStarman = function() {
+	if (!this.alive) {
+		// wut.
+		return;
+	}
+	
 	this.isStarman = true;
 	this.isInvuln = true;
 	this.starmanTimer = 735;
@@ -438,8 +443,6 @@ Mario.prototype.doLogic = function(game) {
 	
 	this.doGraphics();
 	
-	this.screenystate = Math.floor((game.mario.y - game.mario.height*0x10)/0x1000);
-	
 	if (this.screenystate >= 1 ) {
 		this.die(game, true);
 	}
@@ -449,6 +452,8 @@ Mario.prototype.doLogic = function(game) {
 Mario.prototype.updateCoords = function() {
 	this.x += (this.speed - (this.speed & 0xFF)) / 0x100;
 	this.y += Math.abs(this.ySpeed - (this.ySpeed & 0xFF)) / 0x100 * Math.sign(this.ySpeed);
+	
+	this.screenystate = Math.floor((game.mario.y - game.mario.height*0x10)/0x1000);
 }
 
 Mario.prototype.doGraphics = function() {

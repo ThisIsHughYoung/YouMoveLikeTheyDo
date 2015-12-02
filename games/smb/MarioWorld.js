@@ -188,6 +188,12 @@ MarioWorld.prototype.doBumpAnim = function() {
 
 
 MarioWorld.prototype.doCamera = function(game) {
+	
+	if (game.mario.screenystate > 0) {
+		// If we're below the screen, don't update camera position
+		return;
+	}
+	
 	var prevscreenx = game.mario.screenx
 	game.mario.screenx = game.mario.x - this.camerax;
 	if (game.mario.speed > 0) {
