@@ -213,7 +213,10 @@ function getInspectors(game) {
 		{id: "groundTest", val:game.mario.collision.groundTest},
 		{id: "wallTest", val:game.mario.collision.wallTest},
 		{id: "bumpTest", val:game.mario.collision.bumpTest},
-		{id: "viewport", val:game.mario.screenystate}
+		{id: "viewport", val:game.mario.screenystate},
+		{id: "", val:" "},
+		{id: "palette", val:game.mario.palette},
+		{id: "frame", val:game.mario.frame},
 	]
 	return rval;
 }

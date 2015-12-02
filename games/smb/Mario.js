@@ -1,17 +1,6 @@
 
 function Mario(game) {
-	this.game = game;
-	
-	this.alive = true;
-	
-	// int: number of viewport heights
-	// Above screen: > 0
-	// On screen: 0
-	// Below screen: < 0 (can fall as far as 5 screens down)
-	this.screenystate = 0;
-	
-	// Boolean: true if we're on the ground
-	this.ground = true;
+	Actor.call(this, game);
 	
 	// Hex: Player "Float State"
 	// 0x00: On ground
@@ -45,13 +34,6 @@ function Mario(game) {
 	
 	this.crouch = false;
 	
-	// Deprecated - do not use
-	this.state = 0;
-	
-	// int: The direction we are facing
-	// 1 : right, -1: left
-	this.dir = 1;
-	
 	// hex: Our "Input Direction", in binary.
 	// Right: 00000001
 	// Left:  00000010
@@ -70,74 +52,44 @@ function Mario(game) {
 	// bool: Set to "true" if running
 	this.isRun = false;
 	
-	// signed hex: Player speeds (1 pixel = 0x1000)
-	// Note that in speed calculations, we have one extra byte
-	// of precision for acceleration, but this byte is not used
-	// for calculating position.
-	this.speed = 0;
-	this.ySpeed = 0;
-	
 	this.gravity = 0x280;
 	this.gravityA = 0x280;
 	
 	// hex: Initial running speed at beginning of jump
 	this.jumpInitialSpeed = 0;
 	
-	// uint: The maximum speed at which a player can walk/run
-	// (1 pixel = 0x1000)
-	this.maxSpeed = 0x18FF;
-	this.maxAirSpeed = 0x18FF;
-	
 	// hex: Player position (1 pixel = 0x10)
 	this.x = 0x280;
 	this.y = 0xC10;
 	
+	// hex: Max x-speed in air
+	this.maxAirSpeed = 0x18FF;
+	
 	// hex: Player position relative to camera
 	this.screenx = 0;
-	
-	// uint: Mario's height in pixels (either 16 or 32)
-	this.height = 16;
 	
 	// uint: number of frames since we released the B button
 	this.framesSinceBReleased = 0;
 	
-	this.levelEntryFlag = true;
-	
-	this.collision = {
-		//purely for debugging
-		groundTest: false,
-		wallTest: false,
-		wallTestUpper: false,
-		bumpTest: false
-	};
-	
 	// CreateJS Spritesheet object
 	this.spritesheetsmall = new createjs.SpriteSheet({
-		images: [this.game.assets.loader.getResult("mario-s")],
+		images: [game.assets.loader.getResult("mario-s")],
 		frames: {width:16,height:16,count:14*11,regX:0,regY:0},
 		//animations: smallMarioAnim
 	})
 	
 	this.spritesheetbig = new createjs.SpriteSheet({
-		images: [this.game.assets.loader.getResult("mario-b")],
+		images: [game.assets.loader.getResult("mario-b")],
 		frames: {width:16,height:16,count:14*11,regX:0,regY:0},
 		//animations: smallMarioAnim // TODO: create array for large anims
 	})
 	
-	this.hitbox = new createjs.Shape();
-	this.showHitbox = false;
-	
-	// Container for all graphical objects
-	this.container = new createjs.Container();
-	
 	// Mario's main sprite
 	this.sprite = new createjs.Sprite(this.spritesheetsmall, 0);
+	this.sprite.stop();
 	
-	// uint: Current frame of animation
-	this.frame = 0;
-	
-	// uint: Current palette index (see spritesheet for reference)
-	this.palette = 0;
+	// Set to 21 if big
+	this.paletteSize = 14;
 	
 	// uint: Default palette colour to return to (0 for Mario, 1 for Luigi)
 	this.defaultPalette = 0;
@@ -145,11 +97,12 @@ function Mario(game) {
 	// ----------------
 	// END DECLARATIONS
 	
-	this.hitbox.graphics.setStrokeStyle(1,0,0,10,true).beginStroke("#0F0").drawRect(3.5, 3.5, 10, 12);
-	this.sprite.y == 0
-	
 	this.container.addChild(this.sprite);
+	
 }
+
+Mario.prototype = Object.create(Actor.prototype);
+Mario.prototype.constructor = Mario;
 
 Mario.prototype.getPixelCoords = function() {
 	return [(this.x - (this.x & 0xF)) / 0x010, (this.y - (this.y & 0xF)) / 0x010];
@@ -214,7 +167,6 @@ Mario.prototype.doGroundTest = function(game) {
 			if (blCoord[1] % 16 < 5) {
 				this.collision.groundTest = true;
 				this.ground = true;
-				this.levelEntryFlag = false;
 			}
 		}
 	}
@@ -391,6 +343,7 @@ Mario.prototype.doStarman = function() {
 Mario.prototype.doLogic = function(game) {
 	
 	if (!this.alive) {
+		// Ignore all logic (input, collisions) when dead
 		this.updateCoords();
 		this.doGraphics();
 		return;
@@ -398,14 +351,13 @@ Mario.prototype.doLogic = function(game) {
 	
 	// Begin with powerup processing, etc.
 	if (this.isStarman) {
-		this.doStarman()
+		this.doStarman();
 	}
 	
 	// Actual player logic
 	
 	if (this.ground) {
 		if (game.input.isKeyDown['a']) {
-			this.state = 3;
 			this.frame = 5;
 			this.ground = false;
 			this.jumpInitialSpeed = Math.abs(this.speed);
@@ -437,44 +389,12 @@ Mario.prototype.doLogic = function(game) {
 		this.doAir(game);
 	}
 	
-	this.updateCoords();
-	
-	this.doCollision(game);
-	
-	this.doGraphics();
+	Actor.prototype.doLogic.call(this, game);
 	
 	if (this.screenystate >= 1 ) {
 		this.die(game, true);
 	}
 	
-}
-
-Mario.prototype.updateCoords = function() {
-	this.x += (this.speed - (this.speed & 0xFF)) / 0x100;
-	this.y += Math.abs(this.ySpeed - (this.ySpeed & 0xFF)) / 0x100 * Math.sign(this.ySpeed);
-	
-	this.screenystate = Math.floor((game.mario.y - game.mario.height*0x10)/0x1000);
-}
-
-Mario.prototype.doGraphics = function() {
-	if (this.idir & 2) {
-		this.sprite.scaleX = -1;
-	} else {
-		this.sprite.scaleX = 1;
-	}
-	
-	this.container.x = (this.x - (this.x & 0xF)) / 0x010;
-	this.container.y = ((this.y - (this.y & 0xF)) / 0x010) - (this.height - 16);
-	if (this.sprite.scaleX == -1) {
-		this.sprite.x = 16;
-	} else {
-		this.sprite.x = 0;
-	}
-
-	var paletteSize = (this.isBig) ? 21 : 14;
-	if (this.sprite.currentFrame != (this.palette * paletteSize) + this.frame) {
-		this.sprite.gotoAndStop((this.palette * paletteSize) + this.frame);
-	}
 }
 
 // MARIO'S GROUND PHYSICS
@@ -707,7 +627,6 @@ Mario.prototype.doAir = function(game) {
 		this.ySpeed += this.gravity;
 	}
 	
-	this.ySpeed = Math.min(this.ySpeed, 0x4000);
 	
 	// Update Horizontal Speed
 	// see jdaster64 for rules

@@ -62,6 +62,16 @@ world[1][1] = {
 			newtid: 27,
 			item: 'mushroom'
 		},
+		'b-s': {
+			// hidden starman
+			id: 1,
+			tileset:1,
+			tile: 1,
+			bump: 1,
+			bumptid: 27,
+			newtid: 27,
+			item: 'starman'
+		},
 		// Regular pipes
 		'p-tl': {
 			id: 1,
@@ -391,7 +401,7 @@ world[1][1] = {
 
 			[
 				[0,0,0,0,0,0,0,0,0,'brick',0,0,'h-r',1,1],
-				[0,0,0,0,0,0,0,0,0,'brick',0,0,0,1,1]
+				[0,0,0,0,0,0,0,0,0,'b-s',0,0,0,1,1]
 			],
 			[
 				[0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
