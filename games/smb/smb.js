@@ -6,6 +6,8 @@ var manifest = [
 	{id:"block", src:"assets/sprites/block.png"},
 	{id:"mario-s", src:"assets/sprites/mario-small.png"},
 	{id:"mario-b", src:"assets/sprites/mario-big.png"},
+	{id:"bgm-og", src:"assets/music/og.mp3"},
+	{id:"bgm-starman", src:"assets/music/starman.mp3"},
 ];
 
 var defaultKeybinds = {
@@ -44,6 +46,9 @@ function MarioGame() {
 	}
 	
 	this.assets.tilesets = {};
+	
+	this.assets.music = null;
+	this.assets.sfx = null;
 }
 
 MarioGame.prototype = Object.create(Game.prototype);
@@ -174,9 +179,36 @@ function getLevelCoords(chunk, column, block) {
 var game;
 
 function init() {
+	
 	game = new MarioGame();
 	game.debug = 5;
-	game.loadManifest(manifest, true);
+	game.loadManifest(manifest, {audio:true});
+}
+
+function bringTheNoise() {
+	game.audio.playing = true;
+	game.audio.bgm.start(0);
+}
+
+function changeBGM(id, loop) {
+	game.audio.bgm.stop();
+
+	game.audio.bgm = game.audio.context.createBufferSource();
+	game.audio.bgm.buffer = loader.getResult(id);
+	if (loop == null) loop = false
+	game.audio.bgm.loop = loop;
+	game.audio.bgm.connect(game.audio.context.destination)
+	if (game.audio.playing) {
+		game.audio.bgm.start(0);
+	}
+	
+	if (id = "bgm-og") {
+		// Thankfully, the 1-1 music is the only instance in which an
+		// intro section is not included when the music loops. 
+		// It is exactly 1 measure long.
+		game.audio.bgm.loopStart = 2.4015419501133786;
+		game.audio.bgm.loopEnd = game.audio.bgm.buffer.duration;
+	}
 }
 
 function onLoad(game) {
@@ -190,6 +222,11 @@ function onLoad(game) {
 		images: [game.assets.loader.getResult("tileset3")],
 		frames: {width:16, height:16}})
 		
+	window.AudioContext = window.AudioContext || window.webkitAudioContext;
+	game.audio.context = new AudioContext();
+	
+	game.audio.bgm = game.audio.context.createBufferSource();
+	
 	begin(game);
 }
 

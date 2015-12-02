@@ -98,6 +98,8 @@ var Game = function(title, w, h, inputs) {
 	
 	this.input = new GameInput(inputs);
 	
+	this.audio = {};
+	this.audio.playing = false;
 	
 	this.assets = {};
 	
@@ -121,12 +123,17 @@ var Game = function(title, w, h, inputs) {
 	this.tick = function(game) {}
 }
 
-Game.prototype.loadManifest = function(m) {
+Game.prototype.loadManifest = function(m, options) {
 	if (window.location.protocol == 'file:') {
 		this.assets.loader = new createjs.LoadQueue(false);
 	} else {
 		this.assets.loader = new createjs.LoadQueue();
-	} 
+	}
+	
+	if (options != null && options.audio == true) {
+		this.assets.loader.installPlugin(createjs.Sound);
+	}
+	
 	if (this.debug >= 1) {
 		this.assets.loader.on("fileload", function(event){
 			console.log("Loaded: " + event.item.id + " (" + event.item.src + ")");
