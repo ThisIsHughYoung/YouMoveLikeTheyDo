@@ -347,9 +347,12 @@ Mario.prototype.doStarman = function() {
 		this.isStarman = false;
 		this.isInvuln = false;
 		this.palette = this.defaultPalette;
-		changeBGM(game.world.bgm,true);
 	} else {
 		this.starmanAnimCycle--;
+		if (this.starmanTimer == 50) {
+			// Nintendo polish: Audio cue for the player
+			changeBGM(game.world.bgm, true);
+		}
 		if (this.starmanAnimCycle < 0) {
 			
 			if (this.starmanTimer >= 145) {
@@ -358,9 +361,6 @@ Mario.prototype.doStarman = function() {
 				// Nintendo polish: For the last 2.4 seconds or so,
 				// Mario's colours cycle at 1/4 the normal rate so
 				// the player can prepare to return to regular state.
-				// Note that Nintendo chose a visual cue for this game,
-				// while later games (and Sonic the Hedgehog) go for
-				// more reliable audio cues.
 				this.starmanAnimCycle = 8;
 			}
 			
