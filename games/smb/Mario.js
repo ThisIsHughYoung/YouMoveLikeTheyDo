@@ -337,6 +337,7 @@ Mario.prototype.beginStarman = function() {
 	this.starmanTimer = 735;
 	this.starmanAnimCycle = 2;
 	this.starmanAnimIndex = 0;
+	changeBGM('bgm-starman',true);
 }
 
 Mario.prototype.doStarman = function() {
@@ -345,7 +346,7 @@ Mario.prototype.doStarman = function() {
 		this.isStarman = false;
 		this.isInvuln = false;
 		this.palette = this.defaultPalette;
-		// TODO: reset music
+		changeBGM(game.world.bgm,true);
 	} else {
 		this.starmanAnimCycle--;
 		if (this.starmanAnimCycle < 0) {

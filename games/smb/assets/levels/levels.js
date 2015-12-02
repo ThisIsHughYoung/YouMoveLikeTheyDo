@@ -19,6 +19,8 @@ world[1][1] = {
 	
 	worldType: 0,
 	
+	bgm: 'bgm-og',
+	
 	bgColor: '#6888fc', // NES palette 22
 	
 	palettes: [0,0,0],

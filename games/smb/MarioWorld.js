@@ -8,6 +8,8 @@ var MarioWorld = function(game, level) {
 	this.container = new createjs.Container();
 	this.container.y = -8;
 	
+	this.bgm = level.bgm;
+	
 	this.camerafixed = level.camerafixed;
 	this.camerax = 0;
 	
@@ -73,6 +75,11 @@ var MarioWorld = function(game, level) {
 	this.width = this.level.length * 32;
 	
 	$("#gameOverlay").css('background-color', level.bgColor);
+	
+	if (this.bgm != null) {
+		changeBGM(this.bgm,true);
+	}
+	
 }
 
 // Returns a Block Object
