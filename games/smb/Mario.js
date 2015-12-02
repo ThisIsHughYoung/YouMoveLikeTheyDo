@@ -2,6 +2,14 @@
 function Mario(game) {
 	this.game = game;
 	
+	this.alive = true;
+	
+	// int: number of viewport heights
+	// Above screen: > 0
+	// On screen: 0
+	// Below screen: < 0 (can fall as far as 5 screens down)
+	this.screenystate = 0;
+	
 	// Boolean: true if we're on the ground
 	this.ground = true;
 	
@@ -187,8 +195,6 @@ Mario.prototype.doCollision = function(game) {
 	this.doGroundTest(game);
 	
 	this.doGroundEjection(game);
-	
-
 }
 
 Mario.prototype.doGroundTest = function(game) {
@@ -379,6 +385,12 @@ Mario.prototype.doStarman = function() {
 
 Mario.prototype.doLogic = function(game) {
 	
+	if (!this.alive) {
+		this.updateCoords();
+		this.doGraphics();
+		return;
+	}
+	
 	// Begin with powerup processing, etc.
 	if (this.isStarman) {
 		this.doStarman()
@@ -414,18 +426,32 @@ Mario.prototype.doLogic = function(game) {
 	}
 	
 	if (this.ground) {
+		this.ySpeed = 0;
 		this.doGround(game)
 	} else {
 		this.doAir(game);
 	}
 	
-	this.x += (this.speed - (this.speed & 0xFF)) / 0x100;
-	if (!this.ground) {
-		this.y += Math.abs(this.ySpeed - (this.ySpeed & 0xFF)) / 0x100 * Math.sign(this.ySpeed);
-	}
+	this.updateCoords();
 	
 	this.doCollision(game);
 	
+	this.doGraphics();
+	
+	this.screenystate = Math.floor((game.mario.y - game.mario.height*0x10)/0x1000);
+	
+	if (this.screenystate >= 1 ) {
+		this.die(game, true);
+	}
+	
+}
+
+Mario.prototype.updateCoords = function() {
+	this.x += (this.speed - (this.speed & 0xFF)) / 0x100;
+	this.y += Math.abs(this.ySpeed - (this.ySpeed & 0xFF)) / 0x100 * Math.sign(this.ySpeed);
+}
+
+Mario.prototype.doGraphics = function() {
 	if (this.idir & 2) {
 		this.sprite.scaleX = -1;
 	} else {
@@ -706,5 +732,20 @@ Mario.prototype.doAir = function(game) {
 	
 	if (this.speed != 0) {
 		this.momentumDir = Math.sign(this.speed);
+	}
+}
+
+Mario.prototype.die = function(game, fall) {
+	
+	this.alive = false;
+	
+	changeBGM('bgm-die');
+	
+	// Set mario's sprite to "die", and make him jump
+	if (fall == null) {
+		game.eventAnim = 5;
+		game.eventAnimTimer = 0;
+		game.logicPause = true;
+		this.speed = 0;
 	}
 }

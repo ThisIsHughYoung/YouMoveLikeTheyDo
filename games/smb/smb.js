@@ -8,6 +8,7 @@ var manifest = [
 	{id:"mario-b", src:"assets/sprites/mario-big.png"},
 	{id:"bgm-og", src:"assets/music/og.mp3"},
 	{id:"bgm-starman", src:"assets/music/starman.mp3"},
+	{id:"bgm-die", src:"assets/music/die.mp3"},
 	{id:"snd-bump", src:"assets/sound/bump.mp3"},
 	{id:"snd-jump-small", src:"assets/sound/jump-small.mp3"},
 ];
@@ -31,12 +32,17 @@ function MarioGame() {
 	this.resizeFrame(2);
 	this.world = null;
 	
-	this.isDieAnim = false;
 	
 	this.assets.tilesets = {};
 	
 	this.assets.music = null;
 	this.assets.sfx = null;
+	
+	this.logicPause = false;
+	this.eventAnim = 0;
+	this.eventAnimTimer = 0;
+	
+	this.dieTimer = 0;
 }
 
 MarioGame.prototype = Object.create(Game.prototype);
@@ -186,6 +192,9 @@ function begin(game) {
 function getInspectors(game) {
 	var hBox = game.mario.getHitbox();
 	var rval = [
+		{id: "alive", val:game.mario.alive},
+		{id: "ground", val:game.mario.ground},
+		{id: "", val:" "},
 		{id: "camerax", val:game.world.camerax, base:16},
 		{id: "", val:" "},
 		{id: "screenx", val:game.mario.screenx, base:16},
@@ -196,18 +205,15 @@ function getInspectors(game) {
 		{id: "dir", val:game.mario.dir},
 		{id: "skid", val:game.mario.skid},
 		{id: "", val:" "},
-		{id: "ground", val:game.mario.ground},
-		{id: "", val:" "},
 		{id: "yspeed", val:game.mario.ySpeed, base:16},
 		{id: "MomentumDir", val:game.mario.momentumDir, base:16},
 		{id: "Gravity", val:game.mario.gravity, base:16},
 		{id: "GravityA", val:game.mario.gravityA, base:16},
-		{id: "collision-tl", val:hBox.x, base:16},
-		{id: "collision-tr", val:hBox.y, base:16},
+		{id: "", val:" "},
 		{id: "groundTest", val:game.mario.collision.groundTest},
 		{id: "wallTest", val:game.mario.collision.wallTest},
 		{id: "bumpTest", val:game.mario.collision.bumpTest},
-		{id: "levelEntryFlag", val:game.mario.levelEntryFlag}
+		{id: "viewport", val:game.mario.screenystate}
 	]
 	return rval;
 }
@@ -247,13 +253,57 @@ function audioTick(game) {
 	game.audio.gainNode.gain.value = game.audio.gain;
 }
 
+MarioGame.prototype.doDieAnim = function() {
+	this.mario.frame = 6;
+	if (this.eventAnimTimer == 16) {
+		this.mario.ySpeed = -0x4000;
+	} else if (this.eventAnimTimer > 16) {
+		this.mario.ySpeed += 0x280;
+	}
+	this.mario.updateCoords();
+	this.mario.doGraphics();
+}
+
 function tick(event) {
 	if (!event.paused || game.input.isKeyDown['tick']) {
 		audioTick(game);
 		
-		game.input.tick();
-		game.mario.doLogic(game);
-		game.world.doLogic(game);
+		// TODO: cycle coin and question block palettes
+		// (happens regardless of logicPause)
+		
+		if (!game.logicPause) {
+			game.input.tick();
+			game.mario.doLogic(game);
+			game.world.doLogic(game);
+		} else {
+			// An animation is happening (die, powerup, etc)
+			
+			switch(game.eventAnim) {
+			case 1: // powerup
+			case 2: // fire powerup
+			case 3: // powerdown
+			case 4: // flagpole
+			case 5: // die
+				game.doDieAnim();
+				break;
+			default:
+				game.eventAnimTimer = 0;
+				game.eventAnim = 0;
+				game.logicPause = false;
+				break;
+			}
+			
+			game.eventAnimTimer++;
+		}
+		
+		if (!game.mario.alive) {
+			game.dieTimer++;
+			if (game.dieTimer >= 210) {
+				// TODO: reset level
+				createjs.Ticker.paused = true;
+			}
+		}
+		
 		if (game.mario.showHitbox) {
 			game.mario.drawHitbox(game);
 		}
