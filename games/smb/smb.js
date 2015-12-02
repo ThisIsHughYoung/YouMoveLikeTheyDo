@@ -111,6 +111,9 @@ MarioGame.prototype.doBumpAnim = function() {
 		} // else if timeout??
 		
 		// spawn item if it exists
+		
+		// Flush mario's sprite back to top
+		updateSpriteIndex(game);
 		return;
 	} else if (this.bumpAnim.frame >= 15) {
 		this.bumpAnim.ySpeed = 0;
@@ -258,6 +261,11 @@ function onLoad(game) {
 	createjs.Sound.volume = 0.5;
 	
 	begin(game);
+}
+
+function updateSpriteIndex(game, offset) {
+	if (offset == null) offset = 0;
+	game.world.container.setChildIndex(game.mario.container, game.world.container.numChildren - 1 - offset);
 }
 
 function begin(game) {
