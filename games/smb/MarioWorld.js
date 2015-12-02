@@ -8,6 +8,9 @@ var MarioWorld = function(game, level) {
 	this.container = new createjs.Container();
 	this.container.y = -8;
 	
+	this.blocksContainer = new createjs.Container();
+	this.container.addChild(this.blocksContainer)
+	
 	this.bgm = level.bgm;
 	
 	this.camerafixed = level.camerafixed;
@@ -82,7 +85,7 @@ var MarioWorld = function(game, level) {
 				curBlock.bitmap = null;
 				if (curBlock.tileset != null && curBlock.tile != null) {
 					setTileBitmap(this, curBlock);
-					this.container.addChild(curBlock.bitmap);
+					this.blocksContainer.addChild(curBlock.bitmap);
 				}
 				
 			}
@@ -139,8 +142,8 @@ MarioWorld.prototype.startBumpAnim = function(coords) {
 	this.bumpAnim.sprite = new createjs.Sprite(game.assets.tilesets[block.tileset], 
 		this.palettes[block.tileset - 1] + tid)
 	this.bumpAnim.sprite.stop();
-	this.container.removeChild(block.bitmap)
-	this.container.addChild(this.bumpAnim.sprite)
+	this.blocksContainer.removeChild(block.bitmap)
+	this.blocksContainer.addChild(this.bumpAnim.sprite)
 	this.bumpAnim.sprite.x = this.bumpAnim.rx;
 }
 
@@ -148,8 +151,8 @@ MarioWorld.prototype.doBumpAnim = function() {
 	if (this.bumpAnim.frame >= 16) {
 		var block = this.getBlockAtTile([this.bumpAnim.tx, this.bumpAnim.ty]);
 		this.isBumpAnim = false;
-		this.container.removeChild(this.bumpAnim.sprite);
-		this.container.addChild(block.bitmap)
+		this.blocksContainer.removeChild(this.bumpAnim.sprite);
+		this.blocksContainer.addChild(block.bitmap)
 		
 		// Change bumpable property if necessary
 		if (typeof block.bump == 'number') {
