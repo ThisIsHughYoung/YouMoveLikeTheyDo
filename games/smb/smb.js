@@ -31,21 +31,7 @@ function MarioGame() {
 	this.resizeFrame(2);
 	this.world = null;
 	
-	// block "bump" animation
-	this.isBumpAnim = false;
-	this.bumpAnim = {
-		tx: 0,
-		ty: 0,
-		rx: 0,
-		ry: 0,
-		frame: 0,
-		ySpeed: 0,
-		yOffset: 0,
-		block: null,
-		sprite: null,
-		newTID: 0
-		
-	}
+	this.isDieAnim = false;
 	
 	this.assets.tilesets = {};
 	
@@ -56,94 +42,11 @@ function MarioGame() {
 MarioGame.prototype = Object.create(Game.prototype);
 MarioGame.prototype.constructor = MarioGame;
 
-MarioGame.prototype.startBumpAnim = function(coords) {
-	var rCoords = getTileCoords(coords);
-	var block = this.world.getBlockAtTile(coords);
-	
-	if (block.bump == null || block.bump == false || this.isBumpAnim) {
-		return;
-	}
-	
-	var tid = (block.bumptid == null) ? block.tile : block.bumptid;
-	block.id = 1;
-	this.isBumpAnim = true;
-	this.bumpAnim.frame = 0;
-	this.bumpAnim.tx = coords[0];
-	this.bumpAnim.ty = coords[1];
-	this.bumpAnim.rx = rCoords[0];
-	this.bumpAnim.ry = rCoords[1];
-	this.ySpeed = 0;
-	this.yOffset = 0;
-	
-	this.bumpAnim.sprite = new createjs.Sprite(game.assets.tilesets[block.tileset], 
-		this.world.palettes[block.tileset - 1] + tid)
-	this.bumpAnim.sprite.stop();
-	this.world.container.removeChild(block.bitmap)
-	this.world.container.addChild(this.bumpAnim.sprite)
-	this.bumpAnim.sprite.x = this.bumpAnim.rx;
-	
-	console.log("Bumped block " + coords);
-}
 
 function playSound(snd) {
 	if (game.audio.isPlaying) {
 		createjs.Sound.play(snd);
 	}
-}
-
-MarioGame.prototype.doBumpAnim = function() {
-	if (this.bumpAnim.frame >= 16) {
-		var block = this.world.getBlockAtTile([this.bumpAnim.tx, this.bumpAnim.ty]);
-		this.isBumpAnim = false;
-		this.world.container.removeChild(this.bumpAnim.sprite);
-		this.world.container.addChild(block.bitmap)
-		
-		// Change bumpable property if necessary
-		if (typeof block.bump == 'number') {
-			block.bump--;
-			if (block.bump <= 0) {
-				if (block.newtid != null) {
-					block.tile = block.newtid
-					setTileBitmap(this.world, block)
-				}
-				block.bump = false;
-			}
-		} // else if timeout??
-		
-		// spawn item if it exists
-		
-		// Flush mario's sprite back to top
-		updateSpriteIndex(game);
-		return;
-	} else if (this.bumpAnim.frame >= 15) {
-		this.bumpAnim.ySpeed = 0;
-		this.bumpAnim.yOffset = 0;
-	} else if (this.bumpAnim.frame == 0) {
-		this.bumpAnim.ySpeed = -0x20;
-	} else {
-		this.bumpAnim.ySpeed += 0x05;
-	}
-	this.bumpAnim.yOffset += this.bumpAnim.ySpeed;
-	
-	this.bumpAnim.sprite.y = (this.bumpAnim.ry * 0x10) + this.bumpAnim.yOffset;
-	this.bumpAnim.sprite.y = (this.bumpAnim.sprite.y & 0xFFFFF0) / 0x10;
-	this.bumpAnim.frame++;
-}
-
-MarioGame.prototype.doCamera = function() {
-	var prevscreenx = this.mario.screenx
-	this.mario.screenx = this.mario.x - this.world.camerax;
-	if (this.mario.speed > 0) {
-		if (this.mario.screenx > 0x500) {
-			if ((this.mario.screenx - prevscreenx) >= 0x10 ) {
-				this.world.camerax += Math.min(0x10, (this.mario.speed & 0xFF00) / 0x100);
-			}
-		} 
-		if (this.mario.screenx > 0x700) {
-			this.world.camerax = this.mario.x - 0x700;
-		}
-	}
-	this.world.container.x = -(this.world.camerax & 0xFFFFFFF0) / 0x10;
 }
 
 var smallMarioAnim = {
@@ -350,14 +253,9 @@ function tick(event) {
 		
 		game.input.tick();
 		game.mario.doLogic(game);
+		game.world.doLogic(game);
 		if (game.mario.showHitbox) {
 			game.mario.drawHitbox(game);
-		}
-		if (game.isBumpAnim) {
-			game.doBumpAnim();
-		}
-		if (!game.world.camerafixed) {
-			game.doCamera();
 		}
 		game.stage.update();
 		game.overlay.stage.update();
