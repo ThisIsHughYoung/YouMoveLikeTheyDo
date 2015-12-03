@@ -11,6 +11,9 @@ var manifest = [
 	{id:"bgm-die", src:"assets/music/die.mp3"},
 	{id:"snd-bump", src:"assets/sound/bump.mp3"},
 	{id:"snd-jump-small", src:"assets/sound/jump-small.mp3"},
+	{id:"snd-jump-super", src:"assets/sound/jump-super.mp3"},
+	{id:"snd-pipe", src:"assets/sound/pipe.mp3"},
+	{id:"snd-powerup", src:"assets/sound/powerup.mp3"},
 ];
 
 var defaultKeybinds = {
@@ -39,7 +42,9 @@ function MarioGame() {
 	this.assets.sfx = null;
 	
 	this.logicPause = false;
+	this.timePause = false;
 	this.eventAnim = 0;
+	this.eventAnim2 = 0; // substate;
 	this.eventAnimTimer = 0;
 	
 	this.dieTimer = 0;
@@ -272,19 +277,10 @@ function audioTick(game) {
 	game.audio.gainNode.gain.value = game.audio.gain;
 }
 
-MarioGame.prototype.doDieAnim = function() {
-	this.mario.frame = 6;
-	if (this.eventAnimTimer == 16) {
-		this.mario.ySpeed = -0x4000;
-	} else if (this.eventAnimTimer > 16) {
-		this.mario.ySpeed += 0x280;
-	}
-	this.mario.updateCoords();
-	this.mario.doGraphics();
-}
-
+var ticks = 0;
 function tick(event) {
 	if (!event.paused || game.input.isKeyDown['tick']) {
+		ticks++;
 		audioTick(game);
 		
 		// TODO: cycle coin and question block palettes
@@ -295,23 +291,7 @@ function tick(event) {
 			game.mario.doLogic(game);
 			game.world.doLogic(game);
 		} else {
-			// An animation is happening (die, powerup, etc)
-			
-			switch(game.eventAnim) {
-			case 1: // powerup
-			case 2: // fire powerup
-			case 3: // powerdown
-			case 4: // flagpole
-			case 5: // die
-				game.doDieAnim();
-				break;
-			default:
-				game.eventAnimTimer = 0;
-				game.eventAnim = 0;
-				game.logicPause = false;
-				break;
-			}
-			
+			doEventAnims(game);
 			game.eventAnimTimer++;
 		}
 		
@@ -320,6 +300,10 @@ function tick(event) {
 			if (game.dieTimer >= 210) {
 				resetLevel(game)
 			}
+		}
+		
+		if (game.mario.isInvuln) {
+			game.mario.sprite.alpha = (ticks%2 == 0) ? 0:1;
 		}
 		
 		if (game.mario.showHitbox) {

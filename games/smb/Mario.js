@@ -80,7 +80,7 @@ function Mario(game) {
 	
 	this.spritesheetbig = new createjs.SpriteSheet({
 		images: [game.assets.loader.getResult("mario-b")],
-		frames: {width:16,height:16,count:14*11,regX:0,regY:0},
+		frames: {width:16,height:32,count:14*11,regX:0,regY:0},
 		//animations: smallMarioAnim // TODO: create array for large anims
 	})
 	
@@ -107,6 +107,69 @@ function Mario(game) {
 Mario.prototype = Object.create(Actor.prototype);
 Mario.prototype.constructor = Mario;
 
+Mario.prototype.grow = function() {
+	if (this.isBig) {
+		return;
+	}
+	
+	this.game.logicPause = true;
+	this.game.timePause = true;
+	
+	this.game.eventAnim = 1;
+	this.game.eventAnim2 = 0;
+	this.game.eventAnimTimer = 0;
+	
+	playSound('snd-powerup');
+}
+
+Mario.prototype.shrink = function() {
+	if (!this.isBig) {
+		return;
+	}
+	
+	this.game.logicPause = true;
+	this.game.timePause = true;
+	
+	this.game.eventAnim = 3;
+	this.game.eventAnim2 = 0;
+	this.game.eventAnimTimer = 0;
+	
+	this.isInvuln = true;
+	this.dbTimer = 148;
+	
+	playSound('snd-pipe');
+}
+
+Mario.prototype.useBigSprite = function() {
+	if (this.isBig) {
+		return;
+	}
+	
+	this.isBig = true;
+	
+	this.container.removeChild(this.sprite);
+	this.sprite = new createjs.Sprite(this.spritesheetbig,0);
+	this.sprite.stop();
+	this.container.addChild(this.sprite);
+	this.height = 32;
+	this.paletteSize = 21;
+}
+
+Mario.prototype.useSmallSprite = function() {
+	if (!this.isBig) {
+		return;
+	}
+	
+	this.isBig = false;
+	
+	this.container.removeChild(this.sprite);
+	this.sprite = new createjs.Sprite(this.spritesheetsmall,0);
+	this.sprite.stop();
+	this.container.addChild(this.sprite);
+	this.height = 16;
+	this.paletteSize = 14;
+}
+
 Mario.prototype.getPixelCoords = function() {
 	return [(this.x - (this.x & 0xF)) / 0x010, (this.y - (this.y & 0xF)) / 0x010];
 }
@@ -122,7 +185,7 @@ Mario.prototype.isOnTile = function() {
 Mario.prototype.getHitbox = function() {
 	// For some reason Mario's hitbox's left edge 1px off from what FCEUX displays
 	return { x:((this.x - (this.x & 0xF)) / 0x10) + 3 + 1, 
-		y:((this.y - (this.y & 0xF)) / 0x10) + 4, 
+		y:((this.y - (this.y & 0xF)) / 0x10) - (this.height-16) + 4, 
 		w:9, 
 		h:this.height-16 + 11};
 }
@@ -300,7 +363,6 @@ Mario.prototype.beginStarman = function() {
 	}
 	
 	this.isStarman = true;
-	this.isInvuln = true;
 	this.starmanTimer = 735;
 	this.starmanAnimCycle = 2;
 	this.starmanAnimIndex = 0;
@@ -311,7 +373,6 @@ Mario.prototype.doStarman = function() {
 	this.starmanTimer--;
 	if (this.starmanTimer <= 0) {
 		this.isStarman = false;
-		this.isInvuln = false;
 		this.palette = this.defaultPalette;
 	} else {
 		this.starmanAnimCycle--;
@@ -357,6 +418,14 @@ Mario.prototype.doLogic = function(game) {
 		this.doStarman();
 	}
 	
+	if (this.isInvuln) {
+		if (this.dbTimer <= 0) {
+			this.isInvuln = false;
+			this.sprite.alpha = 1;
+		}
+		this.dbTimer--;
+	}
+	
 	// Actual player logic
 	
 	if (this.ground) {
@@ -381,7 +450,11 @@ Mario.prototype.doLogic = function(game) {
 			} else {
 				this.maxAirSpeed = 0x28FF
 			}
-			playSound('snd-jump-small');
+			if (this.isBig) {
+				playSound('snd-jump-super');
+			} else {
+				playSound('snd-jump-small');
+			}
 		}
 	}
 	
@@ -665,6 +738,9 @@ Mario.prototype.doAir = function(game) {
 Mario.prototype.die = function(game, fall) {
 	
 	this.alive = false;
+	
+	// Stop all sound effects
+	createjs.Sound.stop();
 	
 	changeBGM('bgm-die');
 	
