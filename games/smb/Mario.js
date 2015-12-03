@@ -305,17 +305,25 @@ Mario.prototype.doWallEjection = function(game) {
 		if (trBlock.id == 1) {
 			rCollision = true;
 		}
-		this.speed = 0;
 	
 		// if falling: eject opp of momentum
 		if (this.ySpeed > 0) {
+			this.speed = 0;
 			this.x += 0x10 * -this.momentumDir;
 		} else {
 			// if ascending or on ground, try to eject towards empty tile
 			if (!lCollision && rCollision) {
-				this.x -= 0x10;
+				if (Math.sign(this.speed) != -1) {
+					// Only eject if our velocity is
+					// contrary to ejection
+					this.speed = 0;
+					this.x -= 0x10;
+				}
 			} else {
-				this.x += 0x10;
+				if (Math.sign(this.speed) != 1) {
+					this.speed = 0;
+					this.x += 0x10;
+				}
 			}
 		}
 	}
@@ -693,6 +701,22 @@ Mario.prototype.doAir = function(game) {
 	// in SMB's input scanning.
 	var airidir = (isRight) ? 1 : -1;
 	
+	var tempidir;
+	if (isInput) {
+		tempidir = 0;
+		if (isLeft) {
+			tempidir = tempidir | 2;
+		}
+		if (isRight) {
+			tempidir = tempidir | 1;
+		}
+	}
+	var tempFDir = 0;
+	if (this.dir == 1) {
+		tempFDir = 1;
+	} else if (this.dir == -1) {
+		tempFDir = 2;
+	}
 	
 	var momentumchange = 0;
 	
@@ -717,6 +741,16 @@ Mario.prototype.doAir = function(game) {
 				// In all other cases, player's ability to change momentum
 				// at low speeds should be slightly reduced
 				this.speed += 0x0098 * airidir;
+				
+				// TAS Trick: Hopping backwards of Mario's facing direction causes
+				// Mario to accelerate 2x the normal rate (faster than running). 
+				// No idea how this happened from a coding perspective. 
+				// so I'll just leave this here.
+				if (Math.sign(this.speed) == -this.dir && tempidir & ~tempFDir) {
+					console.log("extra speed")
+					this.speed += 0x0098 * airidir;	
+				}
+				
 			}
 		} else {
 			// High speeds:
