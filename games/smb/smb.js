@@ -177,16 +177,27 @@ function updateSpriteIndex(game, offset) {
 	game.world.container.setChildIndex(game.mario.container, game.world.container.numChildren - 1 - offset);
 }
 
-function begin(game) {
-	game.mario = new Mario(game);
+function resetLevel(game) {
+	game.stage.removeChild(game.world.container);
+	startLevel(game)
+}
+
+function startLevel(game) {
+	game.logicPause = false;
+	game.eventAnim = 0;
+	game.eventAnimTimer = 0;
 	
+	game.dieTimer = 0;
+	
+	game.mario = new Mario(game);
 	game.world = new MarioWorld(game, world[1][1]);
 	game.stage.addChild(game.world.container);
 	game.world.container.addChild(game.mario.container);
-	
-	game.stage.update();
-	
-	createInspectors(game)
+}
+
+function begin(game) {
+	startLevel(game);
+	createInspectors(game);
 }
 
 function getInspectors(game) {
@@ -302,8 +313,7 @@ function tick(event) {
 		if (!game.mario.alive) {
 			game.dieTimer++;
 			if (game.dieTimer >= 210) {
-				// TODO: reset level
-				createjs.Ticker.paused = true;
+				resetLevel(game)
 			}
 		}
 		

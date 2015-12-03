@@ -99,6 +99,9 @@ function Mario(game) {
 	
 	this.container.addChild(this.sprite);
 	
+	this.updateCoords();
+	this.doGraphics();
+	
 }
 
 Mario.prototype = Object.create(Actor.prototype);
