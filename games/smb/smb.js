@@ -146,6 +146,11 @@ function changeBGM(id, loop) {
 	}
 }
 
+function switchPalettes() {
+	var p = (game.mario.defaultPalette == 0) ? 1 : 0;
+	game.mario.defaultPalette = game.mario.palette = p;
+}
+
 function onLoad(game) {
 	game.assets.tilesets[1] = new createjs.SpriteSheet({
 		images: [game.assets.loader.getResult("tileset1")],
