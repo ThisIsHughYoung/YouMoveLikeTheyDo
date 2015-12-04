@@ -29,6 +29,7 @@ var defaultKeybinds = {
 
 function MarioGame() {
 	Game.call(this, "Super Mario Bros.", 256, 224, defaultKeybinds);
+	this.ticks = 0;
 	this.begin = onLoad;
 	this.tick = tick;
 	this.mario = null;
@@ -277,10 +278,9 @@ function audioTick(game) {
 	game.audio.gainNode.gain.value = game.audio.gain;
 }
 
-var ticks = 0;
 function tick(event) {
 	if (!event.paused || game.input.isKeyDown['tick']) {
-		ticks++;
+		game.ticks++;
 		audioTick(game);
 		
 		// TODO: cycle coin and question block palettes
@@ -303,7 +303,7 @@ function tick(event) {
 		}
 		
 		if (game.mario.isInvuln) {
-			game.mario.sprite.alpha = (ticks%2 == 0) ? 0:1;
+			game.mario.sprite.alpha = (game.ticks%2 == 0) ? 0:1;
 		}
 		
 		if (game.mario.showHitbox) {

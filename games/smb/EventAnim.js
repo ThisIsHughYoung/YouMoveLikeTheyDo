@@ -5,6 +5,8 @@ function doEventAnims(game) {
 		game.doPowerupAnim();
 		break;
 	case 2: // fire powerup
+		game.doFirePowerupAnim();
+		break;
 	case 3: // powerdown
 		game.doPowerdownAnim();
 		break;
@@ -32,7 +34,7 @@ MarioGame.prototype.doPowerupAnim = function() {
 	// the player is NOT holding A before obtaining the mushroom, and then presses
 	// A during the animation, Mario will jump in mid-air!
 	this.mario.ground = true;
-	if (this.eventAnimTimer % 4 == 0) {
+	if (this.ticks % 4 == 0) {
 		this.eventAnim2++;
 		
 		switch (this.eventAnim2) {
@@ -74,6 +76,25 @@ MarioGame.prototype.doPowerupAnim = function() {
 	this.mario.doGraphics();
 }
 
+MarioGame.prototype.doFirePowerupAnim = function() {
+	if (this.eventAnimTimer == 0) {
+		this.mario.palette = 2;
+		this.eventAnim2 = 0;
+	} else if (this.ticks % 4 == 0) {
+		//cycle colors
+		this.eventAnim2 = (this.eventAnim2 >= 3) ? 0 : this.eventAnim2 + 1;
+		this.mario.palette = 2 + (Math.floor(this.ticks / 4) % 4);
+	}
+	if (this.eventAnimTimer >= 62) {
+		this.mario.palette = 2;
+		this.eventAnimTimer = 0;
+		this.eventAnim = 0;
+		this.eventAnim2 = 0;
+		this.logicPause = false;
+	}
+	this.mario.doGraphics();
+}
+
 // Event 3: Powerdown (Big/Fire Mario takes damage)
 MarioGame.prototype.doPowerdownAnim = function() {
 	// 16 frames in big jumping sprite
@@ -84,8 +105,7 @@ MarioGame.prototype.doPowerdownAnim = function() {
 	if (this.eventAnimTimer == 0) {
 		this.mario.frame = 5;
 	} else if (this.eventAnimTimer >= 18 && this.eventAnimTimer <= 55) {
-		if ((this.eventAnimTimer - 2) % 4 == 0) {
-			console.log("tick")
+		if (this.ticks % 4 == 0) {
 			if (this.mario.isBig) {
 				this.mario.useSmallSprite();
 				this.mario.frame = 9;

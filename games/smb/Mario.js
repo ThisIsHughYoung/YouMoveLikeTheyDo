@@ -108,14 +108,21 @@ Mario.prototype = Object.create(Actor.prototype);
 Mario.prototype.constructor = Mario;
 
 Mario.prototype.grow = function() {
-	if (this.isBig) {
+	if (this.isFire || this.game.logicPause) {
 		return;
+	}
+	
+	if (!this.isBig) {
+		// Small mario: behave like a mushroom
+		this.game.eventAnim = 1;
+	} else {
+		// Big mario: behave like a fire flower
+		this.isFire = true;
+		this.game.eventAnim = 2;
 	}
 	
 	this.game.logicPause = true;
 	this.game.timePause = true;
-	
-	this.game.eventAnim = 1;
 	this.game.eventAnim2 = 0;
 	this.game.eventAnimTimer = 0;
 	
@@ -123,9 +130,12 @@ Mario.prototype.grow = function() {
 }
 
 Mario.prototype.shrink = function() {
-	if (!this.isBig) {
+	if (!this.isBig || this.game.logicPause) {
 		return;
 	}
+	
+	this.palette = this.defaultPalette;
+	this.isFire = false;
 	
 	this.game.logicPause = true;
 	this.game.timePause = true;
@@ -389,6 +399,7 @@ Mario.prototype.doStarman = function() {
 			changeBGM(game.world.bgm, true);
 		}
 		if (this.starmanAnimCycle < 0) {
+			this.starmanPalettes[3] = this.defaultPalette;
 			
 			if (this.starmanTimer >= 145) {
 				this.starmanAnimCycle = 2;
@@ -747,7 +758,6 @@ Mario.prototype.doAir = function(game) {
 				// No idea how this happened from a coding perspective. 
 				// so I'll just leave this here.
 				if (Math.sign(this.speed) == -this.dir && tempidir & ~tempFDir) {
-					console.log("extra speed")
 					this.speed += 0x0098 * airidir;	
 				}
 				
@@ -770,6 +780,9 @@ Mario.prototype.doAir = function(game) {
 }
 
 Mario.prototype.die = function(game, fall) {
+	if (this.game.logicPause) {
+		return;
+	}
 	
 	this.alive = false;
 	
