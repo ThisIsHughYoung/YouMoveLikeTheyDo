@@ -3,6 +3,8 @@ var MarioWorld = function(game, level) {
 	var blockId = 0;
 	var curBlock = null;
 	
+	this.game = game;
+	
 	this.level = [];
 	
 	this.container = new createjs.Container();
@@ -36,6 +38,11 @@ var MarioWorld = function(game, level) {
 		newTID: 0
 	}
 	
+	this.objects = [];
+	// Array of up to 5 enemies
+	this.enemies = [];
+	
+	// Build the level
 	
 	switch(this.worldType) {
 	case 1:
@@ -57,12 +64,12 @@ var MarioWorld = function(game, level) {
 	this.xtiles = 0;
 	this.ytiles = 15;
 	
-	for (var chunk in map) {
+	for (var chunk = 0; chunk < map.length; chunk++) {
 		this.level.push([]);
 		this.xtiles += 2;
-		for (var column in map[chunk]) {
+		for (var column = 0; column < map[chunk].length; column++) {
 			this.level[chunk].push([]);
-			for (var block in map[chunk][column]) {
+			for (var block = 0; block < map[chunk][column].length; block++) {
 				//console.log("chunk: " + chunk + " column: " + column + " block: " + block);
 				this.level[chunk][column].push({});
 				curBlock = map[chunk][column][block];
@@ -99,7 +106,6 @@ var MarioWorld = function(game, level) {
 	if (this.bgm != null) {
 		changeBGM(this.bgm,true);
 	}
-	
 }
 
 // Returns a Block Object

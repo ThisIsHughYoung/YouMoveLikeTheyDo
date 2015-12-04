@@ -1,9 +1,16 @@
+// Array Remove - By John Resig (MIT Licensed)
+Array.prototype.remove = function(from, to) {
+  var rest = this.slice((to || from) + 1 || this.length);
+  this.length = from < 0 ? this.length + from : from;
+  return this.push.apply(this, rest);
+};
 
 var manifest = [
 	{id:"tileset1", src:"assets/sprites/tileset1.png"},
 	{id:"tileset2", src:"assets/sprites/tileset2.png"},
 	{id:"tileset3", src:"assets/sprites/tileset3.png"},
-	{id:"block", src:"assets/sprites/block.png"},
+	{id:"tileset8x8", src:"assets/sprites/8x8.png"},
+	{id:"objects", src:"assets/sprites/objects.png"},
 	{id:"mario-s", src:"assets/sprites/mario-small.png"},
 	{id:"mario-b", src:"assets/sprites/mario-big.png"},
 	{id:"bgm-og", src:"assets/music/og.mp3"},
@@ -29,13 +36,14 @@ var defaultKeybinds = {
 
 function MarioGame() {
 	Game.call(this, "Super Mario Bros.", 256, 224, defaultKeybinds);
+	this.resizeFrame(2);
+	
 	this.ticks = 0;
 	this.begin = onLoad;
 	this.tick = tick;
-	this.mario = null;
-	this.resizeFrame(2);
-	this.world = null;
 	
+	this.mario = null;
+	this.world = null;
 	
 	this.assets.tilesets = {};
 	
@@ -167,6 +175,19 @@ function onLoad(game) {
 	game.assets.tilesets[3] = new createjs.SpriteSheet({
 		images: [game.assets.loader.getResult("tileset3")],
 		frames: {width:16, height:16}})
+	game.assets.tilesets[4] = new createjs.SpriteSheet({
+		images: [game.assets.loader.getResult("objects")],
+		frames: {width:16,height:16,count:126*4,regX:0,regY:0}})
+	game.assets.tilesets[5] = new createjs.SpriteSheet({
+		images: [game.assets.loader.getResult("tileset8x8")],
+		frames: {width:8,height:8,count:40*4,regX:0,regY:0}})
+	game.assets.marioSmall = new createjs.SpriteSheet({
+		images: [game.assets.loader.getResult("mario-s")],
+		frames: {width:16,height:16,count:14*11,regX:0,regY:0}})
+	game.assets.marioBig =  new createjs.SpriteSheet({
+		images: [game.assets.loader.getResult("mario-b")],
+		frames: {width:16,height:32,count:14*11,regX:0,regY:0}})
+	
 		
 	window.AudioContext = window.AudioContext || window.webkitAudioContext;
 	game.audio.context = new AudioContext();
@@ -247,7 +268,7 @@ function createInspectors(game) {
 	var inspectors = getInspectors(game)
 	var id;
 	var entry;
-	for (var i in inspectors) {
+	for (var i = 0; i < inspectors.length; i++) {
 		id = inspectors[i].id;
 		entry = $("<div class='entry'>" + id + ": <span id='" + id + "'> - </span></div>")
 		$("#inspectors").append(entry)
@@ -256,7 +277,7 @@ function createInspectors(game) {
 
 function updateInspectors(game) {
 	var inspectors = getInspectors(game)
-	for (var i in inspectors) {
+	for (var i = 0; i < inspectors.length; i++) {
 		var id = inspectors[i].id;
 		var val = inspectors[i].val;
 		var str = val;

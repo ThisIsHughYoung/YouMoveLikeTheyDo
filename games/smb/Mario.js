@@ -71,21 +71,8 @@ function Mario(game) {
 	// uint: number of frames since we released the B button
 	this.framesSinceBReleased = 0;
 	
-	// CreateJS Spritesheet object
-	this.spritesheetsmall = new createjs.SpriteSheet({
-		images: [game.assets.loader.getResult("mario-s")],
-		frames: {width:16,height:16,count:14*11,regX:0,regY:0},
-		//animations: smallMarioAnim
-	})
-	
-	this.spritesheetbig = new createjs.SpriteSheet({
-		images: [game.assets.loader.getResult("mario-b")],
-		frames: {width:16,height:32,count:14*11,regX:0,regY:0},
-		//animations: smallMarioAnim // TODO: create array for large anims
-	})
-	
 	// Mario's main sprite
-	this.sprite = new createjs.Sprite(this.spritesheetsmall, 0);
+	this.sprite = new createjs.Sprite(this.game.assets.marioSmall, 0);
 	this.sprite.stop();
 	
 	// Set to 21 if big
@@ -158,7 +145,7 @@ Mario.prototype.useBigSprite = function() {
 	this.isBig = true;
 	
 	this.container.removeChild(this.sprite);
-	this.sprite = new createjs.Sprite(this.spritesheetbig,0);
+	this.sprite = new createjs.Sprite(this.game.assets.marioBig,0);
 	this.sprite.stop();
 	this.container.addChild(this.sprite);
 	this.height = 32;
@@ -173,7 +160,7 @@ Mario.prototype.useSmallSprite = function() {
 	this.isBig = false;
 	
 	this.container.removeChild(this.sprite);
-	this.sprite = new createjs.Sprite(this.spritesheetsmall,0);
+	this.sprite = new createjs.Sprite(this.game.assets.marioSmall,0);
 	this.sprite.stop();
 	this.container.addChild(this.sprite);
 	this.height = 16;
