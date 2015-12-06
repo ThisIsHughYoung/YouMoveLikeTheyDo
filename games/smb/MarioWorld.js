@@ -1,3 +1,5 @@
+var tilePalSizes = [66,52,22,126,40];
+
 var MarioWorld = function(game, level) {
 	var map = level.chunks;
 	var blockId = 0;
@@ -18,7 +20,8 @@ var MarioWorld = function(game, level) {
 	this.camerafixed = level.camerafixed;
 	this.camerax = 0;
 	
-	this.palettes = level.palettes;
+	this.palette = level.palette;
+	this.ogPalette = level.ogPalette;
 	
 	this.worldType = level.worldType;
 	
@@ -129,6 +132,7 @@ MarioWorld.prototype.getBlockAtTile = function(coords) {
 MarioWorld.prototype.startBumpAnim = function(coords) {
 	var rCoords = getTileCoords(coords);
 	var block = this.getBlockAtTile(coords);
+	var p = (block.tileset == 1) ? this.palette : this.ogPalette;
 	
 	if (block.bump == null || block.bump == false || this.isBumpAnim) {
 		return;
@@ -146,7 +150,7 @@ MarioWorld.prototype.startBumpAnim = function(coords) {
 	this.yOffset = 0;
 	
 	this.bumpAnim.sprite = new createjs.Sprite(game.assets.tilesets[block.tileset], 
-		this.palettes[block.tileset - 1] + tid)
+		tilePalSizes[block.tileset - 1] * p + tid)
 	this.bumpAnim.sprite.stop();
 	this.blocksContainer.removeChild(block.bitmap)
 	this.blocksContainer.addChild(this.bumpAnim.sprite)
@@ -228,16 +232,17 @@ MarioWorld.prototype.doLogic = function(game) {
 function setTileBitmap(world, block) {
 	var tx = block.tx;
 	var ty = block.ty;
+	var p = (block.tileset == 1) ? world.palette : world.ogPalette;
 	var coords = getTileCoords([tx, ty]);
 	if (block.bitmap == null) {
 		block.bitmap = new createjs.Sprite(
 			game.assets.tilesets[block.tileset], 
-			world.palettes[block.tileset - 1] + block.tile);
+			tilePalSizes[block.tileset - 1] * p + block.tile);
 		block.bitmap.stop();
 		block.bitmap.x = coords[0];
 		block.bitmap.y = coords[1];
 	} else {
-		block.bitmap.gotoAndStop(world.palettes[block.tileset - 1] + block.tile);
+		block.bitmap.gotoAndStop(tilePalSizes[block.tileset - 1] * p + block.tile);
 	}
 	world.level[Math.floor(tx/2)][tx%2][ty] = block;
 }

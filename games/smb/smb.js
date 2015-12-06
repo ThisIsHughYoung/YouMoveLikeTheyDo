@@ -177,10 +177,10 @@ function onLoad(game) {
 		frames: {width:16, height:16}})
 	game.assets.tilesets[4] = new createjs.SpriteSheet({
 		images: [game.assets.loader.getResult("objects")],
-		frames: {width:16,height:16,count:126*4,regX:0,regY:0}})
+		frames: {width:16,height:16}})
 	game.assets.tilesets[5] = new createjs.SpriteSheet({
 		images: [game.assets.loader.getResult("tileset8x8")],
-		frames: {width:8,height:8,count:40*4,regX:0,regY:0}})
+		frames: {width:8,height:8}})
 	game.assets.marioSmall = new createjs.SpriteSheet({
 		images: [game.assets.loader.getResult("mario-s")],
 		frames: {width:16,height:16,count:14*11,regX:0,regY:0}})
