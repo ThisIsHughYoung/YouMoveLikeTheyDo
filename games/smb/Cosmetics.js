@@ -83,3 +83,65 @@ BumpAnim.prototype.doLogic = function() {
 	this.ttl--;
 }
 
+function BreakAnim(game, world, coords, dir, initialSpeed) {
+	Actor.call(this, game);
+	
+	this.world = world;
+	
+	this.ticks = 0;
+	
+	this.x = coords[0] * 0x10;
+	this.y = coords[1] * 0x10 + 0x10;
+	
+	this.speed = 0x1000 * dir;
+	this.ySpeed = 0;
+	
+	this.maxFallSpeed = 0xFFFFFF;
+	
+	this.initialSpeed = initialSpeed;
+	
+	this.block = world.getBlockAtTile(coords);
+	this.paletteSize = tilePalSizes[4];
+	this.palette = world.palette
+	// tiles 26, 27, 28, 29, depending on game tick counter
+	this.frame = this.frame = (Math.floor(game.ticks / 8) % 4) + 26;;
+	
+	this.sprite = new createjs.Sprite(game.assets.tilesets[5], 0);
+	this.sprite.stop();
+	
+	this.container.addChild(this.sprite);
+	world.blocksContainer.addChild(this.container);
+}
+
+BreakAnim.prototype = Object.create(Actor.prototype);
+BreakAnim.prototype.constructor = BreakAnim;
+
+BreakAnim.prototype.doLogic = function() {
+	
+	if (this.ticks == 1) {
+		this.ySpeed = this.initialSpeed;
+	} else if (this.ticks > 1) {
+		this.ySpeed += 0x0600;
+	}
+	
+	this.updateCoords();
+	
+	if (this.screenystate > 0) {
+		this.die();
+		return;
+	}
+	
+	if (this.game.ticks % 8 == 0) {
+		this.frame = (Math.floor(game.ticks / 8) % 4) + 26;
+	}
+	
+	this.doGraphics();
+	
+	this.ticks++;
+}
+
+BreakAnim.prototype.die = function() {
+	this.world.blocksContainer.removeChild(this.container);
+	this.world.brickbits--;
+	this.alive = false;
+}

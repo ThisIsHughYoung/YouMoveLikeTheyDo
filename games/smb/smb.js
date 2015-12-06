@@ -16,6 +16,7 @@ var manifest = [
 	{id:"bgm-og", src:"assets/music/og.mp3"},
 	{id:"bgm-starman", src:"assets/music/starman.mp3"},
 	{id:"bgm-die", src:"assets/music/die.mp3"},
+	{id:"snd-breakblock", src:"assets/sound/breakblock.mp3"},
 	{id:"snd-bump", src:"assets/sound/bump.mp3"},
 	{id:"snd-jump-small", src:"assets/sound/jump-small.mp3"},
 	{id:"snd-jump-super", src:"assets/sound/jump-super.mp3"},

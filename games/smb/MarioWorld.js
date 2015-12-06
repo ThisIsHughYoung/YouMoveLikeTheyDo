@@ -1,5 +1,11 @@
 var tilePalSizes = [66,52,22,126,40];
 
+var nullBlock = {
+	id: 0,
+	tileset: null,
+	tile: null
+}
+
 var MarioWorld = function(game, level) {
 	var map = level.chunks;
 	var blockId = 0;
@@ -28,6 +34,7 @@ var MarioWorld = function(game, level) {
 	// Animations
 	// block "bump" animation
 	this.isBumpAnim = false;
+	this.brickbits = 0;
 	
 	this.objects = [];
 	// Array of up to 5 enemies
@@ -68,11 +75,7 @@ var MarioWorld = function(game, level) {
 					blockId = curBlock
 					curBlock = jQuery.extend({}, level.blocks[blockId])
 				} else if (curBlock == null) {
-					curBlock = {
-						id: 0,
-						tileset: null,
-						tile: null
-					}
+					curBlock = nullBlock;
 				}
 				
 				curBlock.tx = parseInt(chunk)*2 + parseInt(column);
@@ -115,18 +118,6 @@ MarioWorld.prototype.getBlockAtTile = function(coords) {
 	}
 	
 	return this.level[Math.floor(coords[0]/2)][coords[0]%2][coords[1]];
-}
-
-MarioWorld.prototype.startBumpAnim = function(coords) {
-	var block = this.getBlockAtTile(coords);
-	var p = (block.tileset == 1) ? this.palette : this.ogPalette;
-	
-	if (block.bump == null || block.bump == false || this.isBumpAnim) {
-		return;
-	}
-	this.isBumpAnim = true;
-	var b = new BumpAnim(this.game, this, coords)
-	this.objects.push(b);
 }
 
 
@@ -179,4 +170,69 @@ function setTileBitmap(world, block) {
 		block.bitmap.gotoAndStop(tilePalSizes[block.tileset - 1] * p + block.tile);
 	}
 	world.level[Math.floor(tx/2)][tx%2][ty] = block;
+}
+
+// COSMETICS & ANIMATIONS
+
+
+MarioWorld.prototype.startBumpAnim = function(coords) {
+	var block = this.getBlockAtTile(coords);
+	
+	if (block.breakable && this.game.mario.isBig) {
+		this.startBreakAnim(coords);
+		return;
+	}
+	
+	if (block.bump == null || block.bump == false || this.isBumpAnim) {
+		return;
+	}
+	this.isBumpAnim = true;
+	var b = new BumpAnim(this.game, this, coords)
+	this.objects.push(b);
+}
+
+MarioWorld.prototype.startBreakAnim = function(coords) {
+	
+	// NES Object limit: Only show two instances of this animation at any given time.
+	// If we've exceeded this limit, delete the oldest instance to make room for the 
+	// new one. (NES PPU only supports 8 sprites on the same horizontal scanline, so this
+	// helps prevent flickering on the console. I include it here because why the hell not?)
+	if (this.brickbits > 4) {
+		var t = 0;
+		for (var i = 0; i < this.objects.length; i++) {
+			if (this.objects[i] instanceof BreakAnim) {
+				if (t == 0)  {
+					t = this.objects[i].ticks;
+					this.objects[i].die();
+				} else if (this.objects[i].ticks == t) {
+					this.objects[i].die();
+				}
+			}
+		}
+	}
+	
+	var block = this.getBlockAtTile(coords);
+	var rCoords = getTileCoords(coords);
+	var tx = coords[0];
+	var ty = coords[1];
+	var rx = rCoords[0];
+	var ry = rCoords[1];
+	
+	var b = new BreakAnim(this.game, this, [rx, ry], -1, -0x7000)
+	this.objects.push(b);
+	
+	b = new BreakAnim(this.game, this, [rx+8,ry], 1, -0x7000)
+	this.objects.push(b);
+	
+	b = new BreakAnim(this.game, this, [rx,ry+8], -1, -0x4000)
+	this.objects.push(b);
+	
+	b = new BreakAnim(this.game, this, [rx+8,ry+8], 1, -0x4000)
+	this.objects.push(b);
+	this.brickbits += 4;
+	
+	this.blocksContainer.removeChild(block.bitmap);
+	this.level[Math.floor(tx/2)][tx%2][ty] = nullBlock;
+	
+	playSound("snd-breakblock");
 }

@@ -42,7 +42,8 @@ world[1][1] = {
 			tileset: 1,
 			tile: 1,
 			bump: true,
-			item: null
+			item: null,
+			breakable: true,
 		},
 		// Question Blocks
 		'q-c': {

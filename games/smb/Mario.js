@@ -344,6 +344,7 @@ Mario.prototype.doBumpEjection = function(game) {
 	if (this.collision.bumpTest) {
 		this.y = (this.y & 0xFFFF00) + 0x100 - 0x20;
 		this.ySpeed = this.gravity * 2;
+		createjs.Sound.stop();
 		game.world.startBumpAnim(getTileAtPixel(bumpCoord));
 		playSound('snd-bump');
 	}
