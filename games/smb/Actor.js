@@ -1,5 +1,6 @@
 
 function Actor(game) {
+	
 	this.game = game;
 	
 	this.alive = true;
@@ -101,4 +102,16 @@ Actor.prototype.doLogic = function(game) {
 	this.doCollision(game);
 	
 	this.doGraphics();
+}
+
+// Delete any elements in a given array if they are null
+// or if they represent an Object whose "alive" property is
+// set to false. (also deletes non-object values)
+function sweepActorArray(a) {
+  for (var i = 0; i < a.length; i++) {
+  if (a[i] === null || typeof a[i] !== 'object' || !a[i].alive) {
+    a.remove(i)
+    i--;
+    }
+  }
 }
