@@ -202,3 +202,92 @@ Flower.prototype.doGraphics = function() {
 	this.frame = (Math.floor(this.game.ticks / 2) % 4) + 18;
 	Powerup.prototype.doGraphics.call(this)
 }
+
+function Starman(game,coords) {
+
+	Powerup.call(this,game,coords);
+
+	this.frame = (Math.floor(this.game.ticks / 2) % 4) + 27;
+	
+	this.sprite = new createjs.Sprite(game.assets.tilesets[4], 0);
+	this.sprite.stop();
+	
+	this.container.addChild(this.sprite);
+	this.game.world.container.addChild(this.container);
+	
+	this.game.world.container.setChildIndex(this.container, 0);
+	
+	this.onHit = function() {
+		playSound('snd-powerup');
+		this.game.mario.beginStarman();
+	};
+}
+
+Starman.prototype = Object.create(Powerup.prototype);
+Starman.prototype.constructor = Starman;
+
+Starman.prototype.move = function() {
+	this.ySpeed = 0;
+	this.speed = 0x1000;
+	this.dir = 1;
+	this.tangible = false;
+	this.ground = false;
+}
+
+Starman.prototype.doCollisions = function() {
+	if (this.ticks == 64) {
+		this.tangible = true;
+	}
+	
+	if (this.wander && this.tangible) {
+		var blCoord = [Math.floor(this.x / 0x10), Math.floor(this.y / 0x10) + 0x10];
+		var brCoord = [Math.floor(this.x / 0x10) + 0x10, Math.floor(this.y / 0x10) + 0x10];
+	
+		var blTile = getTileAtPixel(blCoord);
+		var brTile = getTileAtPixel(brCoord);
+	
+		var blBlock = game.world.getBlockAtTile(blTile);
+		var brBlock = game.world.getBlockAtTile(brTile);
+		this.ground = false;
+		if (this.ySpeed >= 0) {
+			if (blBlock.id == 1 || brBlock.id == 1) {
+				if (blCoord[1] % 16 < 5) {
+					if (!this.ground) {
+						this.y = (this.y & 0xFFF00) + 0x10;
+						// Make the star 'hop'
+						this.ySpeed = -0x3000;
+					}
+					this.ground = true;
+				}
+			}
+		}
+	
+		if (brBlock.id == 1 && !this.ground) {
+			this.dir = -1
+		}
+	
+		if (blBlock.id == 1 && !this.ground) {
+			this.dir = 1
+		}
+	}
+	
+	if (!this.ground) {
+		this.ySpeed += 0x1B0;
+	}
+	
+	var tlCoord = [Math.floor(this.x / 0x10), Math.floor(this.y / 0x10)];
+	var hbox = [tlCoord[0]+3,tlCoord[1]];
+	var mhbox = this.game.mario.getHitbox();
+	
+	if (hbox[0] < mhbox.x + mhbox.w &&
+		hbox[0] + 12 > mhbox.x &&
+		hbox[1] < mhbox.y + mhbox.h &&
+		hbox[1] + 12 > mhbox.y) {
+			this.marioTest = true;
+	}
+}
+
+Starman.prototype.doGraphics = function() {
+	this.frame = (Math.floor(this.game.ticks / 2) % 4) + 27;
+	Powerup.prototype.doGraphics.call(this)
+}

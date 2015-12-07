@@ -71,6 +71,9 @@ BumpAnim.prototype.doLogic = function() {
 					this.world.objects.push(new Mushroom(this.game, [this.tx,this.ty]))
 				}
 				break;
+			case 'starman':
+				this.world.objects.push(new Starman(this.game,[this.tx,this.ty]))
+				break;
 			case '1up':
 				this.world.objects.push(new OneUp(this.game, [this.tx,this.ty]))
 				break;

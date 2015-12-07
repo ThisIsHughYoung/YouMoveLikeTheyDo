@@ -95,7 +95,13 @@ Mario.prototype = Object.create(Actor.prototype);
 Mario.prototype.constructor = Mario;
 
 Mario.prototype.grow = function() {
-	if (this.isFire || this.game.logicPause) {
+	if (this.game.logicPause) {
+		return;
+	}
+	
+	playSound('snd-powerup');
+	
+	if (this.isFire) {
 		return;
 	}
 	
@@ -113,7 +119,6 @@ Mario.prototype.grow = function() {
 	this.game.eventAnim2 = 0;
 	this.game.eventAnimTimer = 0;
 	
-	playSound('snd-powerup');
 }
 
 Mario.prototype.shrink = function() {
