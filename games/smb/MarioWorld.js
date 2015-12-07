@@ -35,7 +35,9 @@ var MarioWorld = function(game, level) {
 	// block "bump" animation
 	this.isBumpAnim = false;
 	this.brickbits = 0;
+	this.itemCount = 0;
 	
+	this.effects = [];
 	this.objects = [];
 	// Array of up to 5 enemies
 	this.enemies = [];
@@ -147,6 +149,10 @@ MarioWorld.prototype.doLogic = function(game) {
 	if (!this.camerafixed) {
 		this.doCamera(game);
 	}
+	sweepActorArray(this.effects);
+	for (var i = 0; i < this.effects.length; i++) {
+		this.effects[i].doLogic();
+	}
 	sweepActorArray(this.objects);
 	for (var i = 0; i < this.objects.length; i++) {
 		this.objects[i].doLogic();
@@ -188,11 +194,11 @@ MarioWorld.prototype.startBumpAnim = function(coords) {
 	}
 	this.isBumpAnim = true;
 	var b = new BumpAnim(this.game, this, coords)
-	this.objects.push(b);
+	this.effects.push(b);
 	
 	// If the block's item is a coin, then also spawn one here.
 	if (block.item == 'coin') {
-		this.objects.push(new CoinAnim(this.game, this, [coords[0],coords[1]-1]));
+		this.effects.push(new CoinAnim(this.game, this, [coords[0],coords[1]-1]));
 		playSound('snd-coin');
 	} else if (block.item != null) {
 		playSound('snd-powerup-appears');
@@ -207,13 +213,13 @@ MarioWorld.prototype.startBreakAnim = function(coords) {
 	// helps prevent flickering on the console. I include it here because why the hell not?)
 	if (this.brickbits > 4) {
 		var t = 0;
-		for (var i = 0; i < this.objects.length; i++) {
-			if (this.objects[i] instanceof BreakAnim) {
+		for (var i = 0; i < this.effects.length; i++) {
+			if (this.effects[i] instanceof BreakAnim) {
 				if (t == 0)  {
-					t = this.objects[i].ticks;
-					this.objects[i].die();
-				} else if (this.objects[i].ticks == t) {
-					this.objects[i].die();
+					t = this.effects[i].ticks;
+					this.effects[i].die();
+				} else if (this.effects[i].ticks == t) {
+					this.effects[i].die();
 				}
 			}
 		}
@@ -227,16 +233,16 @@ MarioWorld.prototype.startBreakAnim = function(coords) {
 	var ry = rCoords[1];
 	
 	var b = new BreakAnim(this.game, this, [rx, ry], -1, -0x7000)
-	this.objects.push(b);
+	this.effects.push(b);
 	
 	b = new BreakAnim(this.game, this, [rx+8,ry], 1, -0x7000)
-	this.objects.push(b);
+	this.effects.push(b);
 	
 	b = new BreakAnim(this.game, this, [rx,ry+8], -1, -0x4000)
-	this.objects.push(b);
+	this.effects.push(b);
 	
 	b = new BreakAnim(this.game, this, [rx+8,ry+8], 1, -0x4000)
-	this.objects.push(b);
+	this.effects.push(b);
 	this.brickbits += 4;
 	
 	this.blocksContainer.removeChild(block.bitmap);

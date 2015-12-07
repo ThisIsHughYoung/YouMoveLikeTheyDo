@@ -2,6 +2,18 @@
 function Powerup(game, coords) {
 	Actor.call(this,game);
 	
+	// Enforce item limit: If there is a previously existing powerup
+	// in memory, delete it before spawning the next one
+	this.game.world.itemCount++;
+	var i = 0;
+	while (this.game.world.itemCount >= 2 && i < this.game.world.objects.length) {
+		if (this.game.world.objects[i] instanceof Powerup) {
+			this.game.world.objects[i].die();
+		}
+		i++;
+	}
+	this.game.world.itemCount = 1;
+	
 	this.ticks = 0;
 	
 	this.x = coords[0] * 0x100;
@@ -30,6 +42,10 @@ Powerup.prototype = Object.create(Actor.prototype);
 Powerup.prototype.constructor = Powerup;
 
 Powerup.prototype.doLogic = function() {
+	if (!this.alive) {
+		return;
+	}
+	
 	if (this.ticks == 48) {
 		this.wander = true;
 		this.game.world.container.setChildIndex(this.container, this.game.world.container.numChildren - 2);
@@ -60,6 +76,7 @@ Powerup.prototype.doLogic = function() {
 Powerup.prototype.die = function() {
 	this.game.world.container.removeChild(this.container);
 	this.alive = false;
+	this.game.world.itemCount--;
 }
 
 function Mushroom(game,coords) {
