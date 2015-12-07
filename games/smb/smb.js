@@ -18,10 +18,13 @@ var manifest = [
 	{id:"bgm-die", src:"assets/music/die.mp3"},
 	{id:"snd-breakblock", src:"assets/sound/breakblock.mp3"},
 	{id:"snd-bump", src:"assets/sound/bump.mp3"},
+	{id:"snd-coin", src:"assets/sound/coin.mp3"},
 	{id:"snd-jump-small", src:"assets/sound/jump-small.mp3"},
 	{id:"snd-jump-super", src:"assets/sound/jump-super.mp3"},
+	{id:"snd-oneup", src:"assets/sound/oneup.mp3"},
 	{id:"snd-pipe", src:"assets/sound/pipe.mp3"},
 	{id:"snd-powerup", src:"assets/sound/powerup.mp3"},
+	{id:"snd-powerup-appears", src:"assets/sound/powerup-appears.mp3"},
 ];
 
 var defaultKeybinds = {
@@ -203,11 +206,6 @@ function onLoad(game) {
 	createjs.Sound.volume = 0.5;
 	
 	begin(game);
-}
-
-function updateSpriteIndex(game, offset) {
-	if (offset == null) offset = 0;
-	game.world.container.setChildIndex(game.mario.container, game.world.container.numChildren - 1 - offset);
 }
 
 function resetLevel(game) {

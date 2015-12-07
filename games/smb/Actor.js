@@ -71,24 +71,8 @@ Actor.prototype.updateCoords = function() {
 }
 
 Actor.prototype.doGraphics = function() {
-	
-	if (this.idir == null) {
-		this.idir = this.dir;
-	}
-	
-	if (this.idir & 2) {
-		this.sprite.scaleX = -1;
-	} else {
-		this.sprite.scaleX = 1;
-	}
-	
 	this.container.x = (this.x - (this.x & 0xF)) / 0x010;
 	this.container.y = ((this.y - (this.y & 0xF)) / 0x010) - (this.height - 16);
-	if (this.sprite.scaleX == -1) {
-		this.sprite.x = 16;
-	} else {
-		this.sprite.x = 0;
-	}
 	
 	if (this.sprite.currentFrame != (this.palette * this.paletteSize) + this.frame) {
 		this.sprite.gotoAndStop((this.palette * this.paletteSize) + this.frame);

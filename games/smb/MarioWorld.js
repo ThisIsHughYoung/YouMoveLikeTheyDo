@@ -189,6 +189,14 @@ MarioWorld.prototype.startBumpAnim = function(coords) {
 	this.isBumpAnim = true;
 	var b = new BumpAnim(this.game, this, coords)
 	this.objects.push(b);
+	
+	// If the block's item is a coin, then also spawn one here.
+	if (block.item == 'coin') {
+		this.objects.push(new CoinAnim(this.game, this, [coords[0],coords[1]-1]));
+		playSound('snd-coin');
+	} else if (block.item != null) {
+		playSound('snd-powerup-appears');
+	}
 }
 
 MarioWorld.prototype.startBreakAnim = function(coords) {

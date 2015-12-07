@@ -480,6 +480,27 @@ Mario.prototype.doLogic = function(game) {
 	
 }
 
+Mario.prototype.doGraphics = function() {
+	Actor.prototype.doGraphics.call(this);
+	
+	// Flip Mario's sprite according to input, facing direction.
+	if (this.idir == null) {
+		this.idir = this.dir;
+	}
+	
+	if (this.idir & 2) {
+		this.sprite.scaleX = -1;
+	} else {
+		this.sprite.scaleX = 1;
+	}
+	
+	if (this.sprite.scaleX == -1) {
+		this.sprite.x = 16;
+	} else {
+		this.sprite.x = 0;
+	}
+}
+
 // MARIO'S GROUND PHYSICS
 // Logic for Mario's "ground state", handling the following:
 // - Standing

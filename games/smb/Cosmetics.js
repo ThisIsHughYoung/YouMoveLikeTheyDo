@@ -59,7 +59,27 @@ BumpAnim.prototype.doLogic = function() {
 			}
 		} // else if timeout?? (e.g. coin block in 1-2)
 		
+		this.block.id = 1;
+		
 		// spawn item if it exists
+		if (this.block.item != null) {
+			switch(this.block.item) {
+			case 'mushroom':
+				if (this.game.mario.isBig) {
+					this.world.objects.push(new Flower(this.game, [this.tx,this.ty]))
+				} else {
+					this.world.objects.push(new Mushroom(this.game, [this.tx,this.ty]))
+				}
+				break;
+			case '1up':
+				this.world.objects.push(new OneUp(this.game, [this.tx,this.ty]))
+				break;
+			case 'coin':
+				// Coin spawns at the beginning of the animation, not here.
+			default:
+				break;
+			}
+		}
 		
 		// Set alive to false so this object gets deleted by 
 		// sweepActorArray on the next tick
@@ -144,4 +164,57 @@ BreakAnim.prototype.die = function() {
 	this.world.blocksContainer.removeChild(this.container);
 	this.world.brickbits--;
 	this.alive = false;
+}
+
+function CoinAnim(game, world, coords) {
+	Actor.call(this, game);
+	
+	this.world = world;
+	
+	this.ttl = 32;
+	
+	this.x = coords[0] * 0x100;
+	this.y = coords[1] * 0x100;
+	
+	this.speed = 0;
+	this.ySpeed = -0x5000;
+	
+	this.maxFallSpeed = 0xFFFFFF;
+	
+	this.block = world.getBlockAtTile(coords);
+	this.paletteSize = tilePalSizes[3];
+	this.palette = world.palette
+	// tiles 63,64,65,66 depending on game tick counter
+	this.frame = (Math.floor(game.ticks / 2) % 4) + 63;
+	
+	this.sprite = new createjs.Sprite(game.assets.tilesets[4], 0);
+	this.sprite.stop();
+	
+	this.container.addChild(this.sprite);
+	world.container.addChild(this.container);
+}
+
+CoinAnim.prototype = Object.create(Actor.prototype);
+CoinAnim.prototype.constructor = CoinAnim;
+
+CoinAnim.prototype.doLogic = function() {
+	if (this.ttl <= 0) {
+		this.die();
+	}
+	
+	if (this.game.ticks % 2 == 0) {
+		this.frame = (Math.floor(game.ticks / 2) % 4) + 63;
+	}
+	
+	this.updateCoords();
+	this.doGraphics();
+	
+	this.ySpeed += 0x500;
+	
+	this.ttl--;
+}
+CoinAnim.prototype.die = function() {
+	this.world.container.removeChild(this.container);
+	this.alive = false;
+	// TODO: add point display
 }

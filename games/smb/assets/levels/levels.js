@@ -74,6 +74,16 @@ world[1][1] = {
 			newtid: 27,
 			item: 'starman'
 		},
+		'hidden-1up': {
+			// hidden 1-up
+			id: 0,
+			tileset: 1,
+			tile: 28,
+			bump: 1,
+			bumptid: 27,
+			newtid: 27,
+			item: '1up'
+		},
 		// Regular pipes
 		'p-tl': {
 			id: 1,
@@ -125,15 +135,6 @@ world[1][1] = {
 			id: 0,
 			tileset: 2,
 			tile: 9
-		},
-		'hidden-1up': {
-			id: 0,
-			tileset: 1,
-			tile: 28,
-			bump: 1,
-			bumptid: 27,
-			newtid: 27,
-			item: '1up'
 		},
 		
 		// Bushes
@@ -349,7 +350,7 @@ world[1][1] = {
 				[0,0,'cl-m','cl-bm',0,0,0,0,0,'brick',0,0,0,1,1]
 			],
 			[
-				[0,0,'cl-m','cl-bm',0,0,0,0,0,'q-c',0,0,0,1,1],
+				[0,0,'cl-m','cl-bm',0,0,0,0,0,'q-m',0,0,0,1,1],
 				[0,0,'cl-r','cl-br',0,0,0,0,0,'brick',0,0,0,1,1]
 			],
 			
